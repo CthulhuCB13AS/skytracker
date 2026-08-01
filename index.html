@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Skytracker_BP17 – Version V2.15 -->
+<!-- Skytracker_BP17 – Version V2.17 -->
 <html lang="de">
 <head>
 <meta charset="UTF-8">
@@ -403,7 +403,7 @@
 <div class="docview" id="docView" style="display:none;">
   <button type="button" id="backToPlannerBtn" style="margin:20px 0 10px;">&larr; Zurück zum Planer</button>
 
-  <p class="small">Version: V2.15</p>
+  <p class="small">Version: V2.17</p>
   <h2>Überblick</h2>
   <p>
     Dieses Tool findet Himmelsobjekte, die mit einem Linsenteleskop (432&nbsp;mm Brennweite, 72&nbsp;mm
@@ -433,12 +433,12 @@
     anklicken.
   </p>
   <p>
-    Stützpunkte lassen sich im Standort-Fenster wie gewohnt von Hand eintragen, oder über „📷 Direkt
-    vermessen“ per Handykamera einmessen: Das Tool zeigt das Kamerabild mit Fadenkreuz und berechnet
+    Stützpunkte lassen sich im Standort-Fenster wie gewohnt von Hand eintragen, oder über „Vermessen“
+    per Handykamera einmessen: Das Tool zeigt das Kamerabild mit Fadenkreuz und berechnet
     aus Kompass (Azimuth) und Neigungssensor (Höhenwinkel) des Handys live die Blickrichtung. Auf ein
     Hindernis peilen, „Punkt speichern“ antippen, beliebig viele Punkte sammeln, dann „Übernehmen &amp;
     schließen“ &ndash; die vermessenen Punkte landen automatisch als neue Zeilen in der gerade
-    bearbeiteten Tabelle (unten oder oben, je nachdem welcher „Direkt vermessen“-Button genutzt wurde)
+    bearbeiteten Tabelle (unten oder oben, je nachdem welcher „Vermessen“-Button genutzt wurde)
     und lassen sich dort vor dem Speichern noch prüfen oder löschen. Wichtig: Kamera und Sensoren
     funktionieren aus Sicherheitsgründen nur, wenn Skytracker selbst über HTTPS oder
     <code>http://localhost</code> aufgerufen wird &ndash; beim GitHub-Pages-Link und beim Start über
@@ -456,7 +456,10 @@
     Rundumsicht, z.&nbsp;B. ein einzelnes Haus in einer Richtung) und die <strong>obere Grenze</strong>
     (Obergrenze je Azimut, für Verdeckungen von oben, z.&nbsp;B. einen Balkon darüber). Beide werden
     unabhängig voneinander linear zwischen ihren Punkten interpoliert; außerhalb des ersten/letzten
-    Punkts gilt dessen Wert weiter (kein Extrapolieren). Im Polardiagramm zeigt
+    Punkts gilt dessen Wert weiter (kein Extrapolieren). Die untere Grenze darf auch negativ sein
+    (bis &minus;90&deg;) &ndash; relevant bei erhöhter Beobachtungsposition (z.&nbsp;B. Balkon über der
+    Umgebung), wenn der tatsächliche Horizont unterhalb der 0&deg;-Ebene liegt; solche Werte werden
+    unverändert übernommen, auch beim Vermessen per Kamera. Im Polardiagramm zeigt
     die blaue Fläche den tatsächlich nutzbaren Himmelsausschnitt (Kernfläche, siehe Sicherheitspuffer
     unten); kleine gelbe Punkte sind Stützpunkte der unteren, kleine violette Punkte der oberen Grenze.
     Ein Klick auf eine Zeile der Ergebnistabelle zeigt deren Bahn (orange) im Diagramm; erneutes
@@ -649,8 +652,8 @@
     </thead>
     <tbody id="locHorizonRows"></tbody>
   </table>
-  <button type="button" id="locAddHorizonRow" class="secondary" style="padding:6px 12px; font-size:0.8rem;">+ Stützpunkt hinzufügen (unten)</button>
-  <button type="button" id="locSurveyHorizonBtn" class="secondary" style="padding:6px 12px; font-size:0.8rem;">📷 Direkt vermessen</button>
+  <button type="button" id="locAddHorizonRow" class="secondary" style="padding:6px 12px; font-size:0.8rem;">+ Stützpunkt hinzufügen (unten)</button><!--
+  --><button type="button" id="locSurveyHorizonBtn" class="secondary" style="padding:6px 12px; font-size:0.8rem; margin-left:3pt;">Vermessen</button>
 
   <p class="small" style="margin:16px 0 4px; display:flex; justify-content:space-between;"><span>Obere Grenze (Verdeckung von oben, z.&nbsp;B. Balkon darüber)</span><span id="locCeilingCount" class="small"></span></p>
   <table style="width:100%; border-collapse:collapse; margin-bottom:6px;">
@@ -664,8 +667,8 @@
     </thead>
     <tbody id="locCeilingRows"></tbody>
   </table>
-  <button type="button" id="locAddCeilingRow" class="secondary" style="padding:6px 12px; font-size:0.8rem;">+ Stützpunkt hinzufügen (oben)</button>
-  <button type="button" id="locSurveyCeilingBtn" class="secondary" style="padding:6px 12px; font-size:0.8rem;">📷 Direkt vermessen</button>
+  <button type="button" id="locAddCeilingRow" class="secondary" style="padding:6px 12px; font-size:0.8rem;">+ Stützpunkt hinzufügen (oben)</button><!--
+  --><button type="button" id="locSurveyCeilingBtn" class="secondary" style="padding:6px 12px; font-size:0.8rem; margin-left:3pt;">Vermessen</button>
 
   <div style="display:flex; gap:8px; margin-top:22px; justify-content:flex-end;">
     <button type="button" id="locCancelBtn" class="secondary">Abbrechen</button>
@@ -717,7 +720,7 @@
   </div>
 
   <div id="camStartscreen">
-    <h1>📷 Direkt vermessen</h1>
+    <h1>Vermessen</h1>
     <p id="camStartscreenText"></p>
     <p>Benötigt Zugriff auf Kamera und Bewegungssensoren.</p>
     <button type="button" class="primary" id="camBtnStart">Kamera &amp; Sensoren aktivieren</button>
@@ -1786,7 +1789,7 @@
   function buildProfileRowHtml(azClass, elClass, elMax, noteClass, removeClass, az, el, note){
     return `
       <td style="padding:3px 4px;"><input type="number" class="${azClass}" value="${az}" min="0" max="360" style="width:70px; background:var(--panel2); border:1px solid var(--border); color:var(--text); border-radius:6px; padding:5px 6px;"></td>
-      <td style="padding:3px 4px;"><input type="number" class="${elClass}" value="${el}" min="0" max="${elMax}" style="width:70px; background:var(--panel2); border:1px solid var(--border); color:var(--text); border-radius:6px; padding:5px 6px;"></td>
+      <td style="padding:3px 4px;"><input type="number" class="${elClass}" value="${el}" min="-90" max="${elMax}" style="width:70px; background:var(--panel2); border:1px solid var(--border); color:var(--text); border-radius:6px; padding:5px 6px;"></td>
       <td style="padding:3px 4px;"><input type="text" class="${noteClass}" value="${note||''}" placeholder="z.B. Baum" style="width:100%; background:var(--panel2); border:1px solid var(--border); color:var(--text); border-radius:6px; padding:5px 6px;"></td>
       <td style="padding:3px 4px;"><button type="button" class="secondary ${removeClass}" style="padding:4px 9px; font-size:0.78rem;">&times;</button></td>
     `;
@@ -2071,9 +2074,13 @@
 
     btnDone.addEventListener('click', ()=>{
       if(!records.length){ showCamToast('Keine Punkte zum Übernehmen vorhanden.'); return; }
+      // Bewusst NICHT auf [0,90] geklemmt: Ein negativer Höhenwinkel ist physikalisch sinnvoll, wenn
+      // von erhöhter Position aus gemessen wird (z.B. Balkon über der Umgebung) - der tatsächliche
+      // Horizont kann dann unterhalb der 0°-Ebene liegen. Nur der theoretisch unmögliche Bereich
+      // (Nadir/Zenit) wird als Sicherheitsnetz begrenzt, der gemessene Wert selbst bleibt erhalten.
       pendingResult = records.map(r=>({
         az: Math.round(r.azimuth * 10) / 10,
-        el: Math.round(clamp(r.elevation, 0, 90) * 10) / 10
+        el: Math.round(clamp(r.elevation, -90, 90) * 10) / 10
       }));
       dlg.close();
     });
@@ -2356,7 +2363,12 @@
       return { minEl: rawMinEl, maxEl: rawMaxEl, rawMinEl, rawMaxEl };
     }
     return {
-      minEl: Math.max(0, rawMinEl - SAFETY_MARGIN_DEG),
+      // Untere Grenze bewusst nicht bei 0° gekappt: Ist der gemessene Horizont selbst schon negativ
+      // (erhöhte Beobachtungsposition, siehe Doku), soll die Pufferzone von dort aus genauso um 5°
+      // nach außen erweitern wie überall sonst - eine Kappung bei 0° würde die Erweiterung für genau
+      // die Standorte abschneiden, für die negative Werte ursprünglich vorgesehen sind. -90° (Nadir)
+      // bleibt als theoretische Grenze bestehen.
+      minEl: Math.max(-90, rawMinEl - SAFETY_MARGIN_DEG),
       maxEl: Math.min(90, rawMaxEl + SAFETY_MARGIN_DEG),
       rawMinEl, rawMaxEl
     };
