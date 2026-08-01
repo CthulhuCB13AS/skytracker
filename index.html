@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<!-- Skytracker_BP17 – Version V2.13 -->
+<!-- Skytracker_BP17 – Version V2.15 -->
 <html lang="de">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Skytracker &ndash; Balkon-Sichtfenster</title>
 <style>
   :root{
@@ -36,7 +36,16 @@
   .field label{ display:block; font-size:0.78rem; color:var(--muted); margin-bottom:4px; }
   .field input[type=number], .field input[type=date], .field input[type=text], .field select{
     width:100%; background:var(--panel2); border:1px solid var(--border); color:var(--text);
-    border-radius:7px; padding:7px 9px; font-size:0.9rem; height:36px;
+    border-radius:7px; padding:7px 9px; font-size:0.9rem; height:36px; box-sizing:border-box;
+    display:block; margin:0; vertical-align:top;
+  }
+  /* iOS Safari rendert input[type=date] sonst mit einem eigenen nativen Chrome-Element, das Höhe/
+     Breite aus der Regel oben teilweise ignoriert - auf dem iPhone führte das zu einem Datumsfeld,
+     das höher/breiter als das benachbarte Zahlenfeld war (bis hin zu optischem Überlappen). Mit
+     -webkit-appearance:none behandelt Safari das Feld wie ein normales Eingabefeld nach unserem CSS,
+     statt seine eigene native Höhe/Breite zu erzwingen. */
+  .field input[type=date]{
+    -webkit-appearance:none; appearance:none; min-height:36px;
   }
   .field input:focus, .field select:focus{ outline:1px solid var(--accent); }
   .field input[readonly]{ opacity:0.7; cursor:default; }
@@ -104,6 +113,112 @@
     font-size:0.85rem; z-index:2000; opacity:0; transition:opacity 0.2s;
   }
   .toast.show{ opacity:1; }
+
+  /* ================= Kamera-Vermessung (#cameraModal) =================
+     Portiert aus der vom Nutzer bereitgestellten "Azimuth und Höhenwinkel.html" (Kamerabild +
+     Kompass/Neigungssensor zur Direktvermessung von Stützpunkten), direkt in Skytracker integriert
+     statt als separate Datei - siehe Doku-Abschnitt "1. Standort & Sichtfenster" für Details/Grenzen.
+     Alle Selektoren sind bewusst auf "#cameraModal ..." begrenzt, damit sie NICHT die normalen
+     Skytracker-Buttons/-Texte (z.B. das globale "button{...}") überschreiben - nur innerhalb dieses
+     einen Dialogs gilt der dunkle, halbtransparente Kamera-Look des Ursprungstools. */
+  #cameraModal{
+    position:fixed; inset:0; margin:0; padding:0; border:none;
+    width:100vw; height:100vh; max-width:100vw; max-height:100vh;
+    background:#000; color:#fff; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  }
+  #cameraModal::backdrop{ background:#000; }
+  #camVideo{
+    position:fixed; inset:0; width:100%; height:100%; object-fit:cover; background:#111; z-index:0;
+  }
+  #camCrosshair{
+    position:fixed; top:50%; left:50%; width:56px; height:56px;
+    transform:translate(-50%,-50%); z-index:5; pointer-events:none;
+  }
+  #camCrosshair::before, #camCrosshair::after{
+    content:""; position:absolute; background:rgba(255,255,255,0.85); box-shadow:0 0 3px rgba(0,0,0,0.8);
+  }
+  #camCrosshair::before{ top:50%; left:0; width:100%; height:2px; transform:translateY(-1px); }
+  #camCrosshair::after{ left:50%; top:0; height:100%; width:2px; transform:translateX(-1px); }
+  #camCrosshair .cam-dot{
+    position:absolute; top:50%; left:50%; width:6px; height:6px;
+    background:#ff4444; border-radius:50%; transform:translate(-50%,-50%);
+  }
+  #camReadout{
+    position:fixed; top:0; left:0; right:0; z-index:6;
+    padding:max(14px, env(safe-area-inset-top)) 16px 12px 16px;
+    background:linear-gradient(rgba(0,0,0,0.75), rgba(0,0,0,0.15));
+    display:flex; flex-direction:column; gap:6px;
+  }
+  #camTargetLabel{ font-size:12.5px; text-align:center; opacity:0.85; }
+  .cam-metrics-row{ display:flex; align-items:center; gap:8px; }
+  .cam-metric{ text-align:center; flex:1; }
+  .cam-metric .cam-label{ font-size:12px; letter-spacing:0.08em; text-transform:uppercase; opacity:0.75; }
+  .cam-metric .cam-value{ font-size:30px; font-weight:600; font-variant-numeric:tabular-nums; line-height:1.25; }
+  .cam-metric .cam-sub{ font-size:12px; opacity:0.7; }
+  #camCloseXBtn{
+    flex:0 0 auto; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); color:#fff;
+    border-radius:8px; padding:4px 12px; font-size:1.05rem; line-height:1.2; cursor:pointer;
+  }
+  #camWarnbar{
+    position:fixed; top:92px; left:50%; transform:translateX(-50%);
+    z-index:7; max-width:92%;
+    background:rgba(180,60,0,0.92); color:#fff;
+    padding:6px 12px; border-radius:8px; font-size:12.5px;
+    text-align:center; display:none;
+  }
+  #camWarnbar.show{ display:block; }
+  #camControls{
+    position:fixed; left:0; right:0; bottom:0; z-index:6;
+    padding:10px 12px max(12px, env(safe-area-inset-bottom)) 12px;
+    background:linear-gradient(rgba(0,0,0,0.15), rgba(0,0,0,0.8));
+  }
+  .cam-btnrow{ display:flex; gap:6px; flex-wrap:nowrap; }
+  #cameraModal button{
+    font:inherit; font-size:12.5px; font-weight:500;
+    color:rgba(255,255,255,0.82); background:rgba(255,255,255,0.08);
+    border:1px solid rgba(255,255,255,0.16);
+    border-radius:9px; padding:9px 6px;
+  }
+  #cameraModal button:active{ background:rgba(255,255,255,0.18); }
+  .cam-btnrow button{ flex:1 1 0; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  #cameraModal button.primary{ background:#2f8f4e; border-color:#2f8f4e; color:#fff; }
+  #cameraModal button.primary:active{ background:#267a41; }
+  #camLog{
+    max-height:22vh; overflow-y:auto; margin-top:8px;
+    background:rgba(0,0,0,0.55); border-radius:10px; display:none;
+  }
+  #camLog.show{ display:block; }
+  #camLog table{ width:100%; border-collapse:collapse; font-size:12.5px; }
+  #camLog th, #camLog td{ padding:5px 8px; text-align:right; border-bottom:1px solid rgba(255,255,255,0.1); }
+  #camLog th:first-child, #camLog td:first-child{ text-align:left; }
+  #camLog td.cam-del{ text-align:center; color:#ff6b6b; font-weight:700; cursor:pointer; }
+  #camStartscreen{
+    position:fixed; inset:0; z-index:20; background:#0b0f0c;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    padding:24px; text-align:center; gap:14px;
+  }
+  #camStartscreen h1{ font-size:20px; margin:0; }
+  #camStartscreen p{ font-size:14px; opacity:0.8; max-width:340px; line-height:1.5; margin:0; }
+  #camStartscreen button.primary{ font-size:17px; padding:14px 28px; }
+  #camStartError{ color:#ff8a8a; font-size:13px; max-width:340px; display:none; }
+  #camToast{
+    position:fixed; left:50%; bottom:92px; transform:translateX(-50%);
+    z-index:25; background:rgba(20,20,20,0.92); color:#fff;
+    padding:9px 16px; border-radius:9px; font-size:13px;
+    max-width:85%; text-align:center;
+    opacity:0; pointer-events:none; transition:opacity 0.2s ease;
+  }
+  #camToast.show{ opacity:1; }
+  #camConfirmOverlay{
+    position:fixed; inset:0; z-index:30; background:rgba(0,0,0,0.55);
+    display:none; align-items:center; justify-content:center; padding:24px;
+  }
+  #camConfirmOverlay.show{ display:flex; }
+  #camConfirmBox{
+    background:#16201a; border:1px solid rgba(255,255,255,0.15);
+    border-radius:14px; padding:20px; max-width:320px; width:100%; text-align:center;
+  }
+  #camConfirmBox p{ margin:0 0 16px 0; font-size:14.5px; line-height:1.4; }
 </style>
 </head>
 <body>
@@ -288,7 +403,7 @@
 <div class="docview" id="docView" style="display:none;">
   <button type="button" id="backToPlannerBtn" style="margin:20px 0 10px;">&larr; Zurück zum Planer</button>
 
-  <p class="small">Version: V2.13</p>
+  <p class="small">Version: V2.15</p>
   <h2>Überblick</h2>
   <p>
     Dieses Tool findet Himmelsobjekte, die mit einem Linsenteleskop (432&nbsp;mm Brennweite, 72&nbsp;mm
@@ -316,6 +431,22 @@
     Ein Wechsel des Standorts leert die aktuelle Ergebnistabelle (die Daten galten für den vorherigen
     Standort) &ndash; „Daten laden“/„Neu berechnen“ bzw. „Deep-Sky-Objekte berechnen“ danach erneut
     anklicken.
+  </p>
+  <p>
+    Stützpunkte lassen sich im Standort-Fenster wie gewohnt von Hand eintragen, oder über „📷 Direkt
+    vermessen“ per Handykamera einmessen: Das Tool zeigt das Kamerabild mit Fadenkreuz und berechnet
+    aus Kompass (Azimuth) und Neigungssensor (Höhenwinkel) des Handys live die Blickrichtung. Auf ein
+    Hindernis peilen, „Punkt speichern“ antippen, beliebig viele Punkte sammeln, dann „Übernehmen &amp;
+    schließen“ &ndash; die vermessenen Punkte landen automatisch als neue Zeilen in der gerade
+    bearbeiteten Tabelle (unten oder oben, je nachdem welcher „Direkt vermessen“-Button genutzt wurde)
+    und lassen sich dort vor dem Speichern noch prüfen oder löschen. Wichtig: Kamera und Sensoren
+    funktionieren aus Sicherheitsgründen nur, wenn Skytracker selbst über HTTPS oder
+    <code>http://localhost</code> aufgerufen wird &ndash; beim GitHub-Pages-Link und beim Start über
+    „Transit-Planer starten.command“ (startet einen lokalen Server) ist das der Fall, bei einer per
+    Doppelklick direkt geöffneten Datei (<code>file://…</code>) dagegen nicht (die Schaltfläche zeigt
+    dann eine entsprechende Fehlermeldung statt eines Kamerabilds). Die Kompasswerte stammen vom
+    Magnetometer/Gyroskop des Handys und sind keine Präzisionsmessung &ndash; bei Abweichungen hilft es,
+    das Handy einmal in einer liegenden Acht zu bewegen (Kompass-Kalibrierung).
   </p>
   <p>
     Azimut-Start/-Ende sind die harte seitliche Begrenzung (außerhalb gilt der Himmel als nicht einsehbar);
@@ -519,6 +650,7 @@
     <tbody id="locHorizonRows"></tbody>
   </table>
   <button type="button" id="locAddHorizonRow" class="secondary" style="padding:6px 12px; font-size:0.8rem;">+ Stützpunkt hinzufügen (unten)</button>
+  <button type="button" id="locSurveyHorizonBtn" class="secondary" style="padding:6px 12px; font-size:0.8rem;">📷 Direkt vermessen</button>
 
   <p class="small" style="margin:16px 0 4px; display:flex; justify-content:space-between;"><span>Obere Grenze (Verdeckung von oben, z.&nbsp;B. Balkon darüber)</span><span id="locCeilingCount" class="small"></span></p>
   <table style="width:100%; border-collapse:collapse; margin-bottom:6px;">
@@ -533,10 +665,76 @@
     <tbody id="locCeilingRows"></tbody>
   </table>
   <button type="button" id="locAddCeilingRow" class="secondary" style="padding:6px 12px; font-size:0.8rem;">+ Stützpunkt hinzufügen (oben)</button>
+  <button type="button" id="locSurveyCeilingBtn" class="secondary" style="padding:6px 12px; font-size:0.8rem;">📷 Direkt vermessen</button>
 
   <div style="display:flex; gap:8px; margin-top:22px; justify-content:flex-end;">
     <button type="button" id="locCancelBtn" class="secondary">Abbrechen</button>
     <button type="button" id="locSaveBtn">Speichern</button>
+  </div>
+</dialog>
+
+<!-- Kamera-Vermessung: siehe CSS-Kommentar oben bei "#cameraModal" für den Hintergrund. Läuft nur in
+     einem sicheren Kontext (HTTPS oder http://localhost) - siehe CameraSurvey-Modul im Script. -->
+<dialog id="cameraModal">
+  <video id="camVideo" autoplay playsinline muted></video>
+
+  <div id="camReadout">
+    <div id="camTargetLabel"></div>
+    <div class="cam-metrics-row">
+      <div class="cam-metric">
+        <div class="cam-label">Azimuth</div>
+        <div class="cam-value" id="camAzVal">–°</div>
+        <div class="cam-sub" id="camAzDir">–</div>
+      </div>
+      <div class="cam-metric">
+        <div class="cam-label">Höhenwinkel</div>
+        <div class="cam-value" id="camElVal">–°</div>
+        <div class="cam-sub">Horizont = 0°</div>
+      </div>
+      <button type="button" id="camCloseXBtn" aria-label="Abbrechen" title="Ohne Übernahme schließen">&times;</button>
+    </div>
+  </div>
+
+  <div id="camWarnbar"></div>
+
+  <div id="camCrosshair"><div class="cam-dot"></div></div>
+
+  <div id="camControls">
+    <div class="cam-btnrow">
+      <button type="button" id="camBtnSave" class="primary">Punkt speichern</button>
+      <button type="button" id="camBtnToggleLog">Liste (<span id="camCount">0</span>)</button>
+      <button type="button" id="camBtnClear">Leeren</button>
+    </div>
+    <div class="cam-btnrow" style="margin-top:6px;">
+      <button type="button" id="camBtnDone" class="primary">Übernehmen &amp; schließen</button>
+    </div>
+    <div id="camLog">
+      <table>
+        <thead><tr><th>#</th><th>Azimuth</th><th>Höhe</th><th></th></tr></thead>
+        <tbody id="camLogBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div id="camStartscreen">
+    <h1>📷 Direkt vermessen</h1>
+    <p id="camStartscreenText"></p>
+    <p>Benötigt Zugriff auf Kamera und Bewegungssensoren.</p>
+    <button type="button" class="primary" id="camBtnStart">Kamera &amp; Sensoren aktivieren</button>
+    <div id="camStartError"></div>
+    <button type="button" id="camStartCancelBtn" class="secondary">Abbrechen</button>
+  </div>
+
+  <div id="camToast"></div>
+
+  <div id="camConfirmOverlay">
+    <div id="camConfirmBox">
+      <p id="camConfirmText">Alle gespeicherten Punkte löschen?</p>
+      <div class="cam-btnrow">
+        <button type="button" id="camConfirmCancel">Abbrechen</button>
+        <button type="button" id="camConfirmOk" class="primary">Löschen</button>
+      </div>
+    </div>
   </div>
 </dialog>
 
@@ -1644,6 +1842,303 @@
     updateLocRowCounts();
   }
 
+  // ========== Kamera-Vermessung: Stützpunkte per Kamera+Sensoren direkt einmessen ==========
+  // Portiert aus der vom Nutzer bereitgestellten "Azimuth und Höhenwinkel.html" (Kamerabild als
+  // Hintergrund, Azimuth per Kompass/Magnetometer, Höhenwinkel per Neigungssensor/Gyroskop, via
+  // W3C DeviceOrientation-API). Bewusst in einer eigenen Closure gekapselt (statt lose im Skytracker-
+  // Hauptscope), damit eigene Variablen wie "smooth"/"records"/DEG/RAD nicht mit dem restlichen
+  // Skytracker-Code kollidieren - nach außen wird nur CameraSurvey.open(kind, onImport) sichtbar.
+  //
+  // WICHTIG: Kamera + Bewegungssensoren funktionieren nur in einem "sicheren Kontext" (HTTPS oder
+  // http://localhost) - bei einer direkt per Doppelklick geöffneten Datei (file://...) verweigert der
+  // Browser den Zugriff. Über den GitHub-Pages-Link und über "Transit-Planer starten.command" (startet
+  // einen lokalen Server auf http://localhost) ist das gegeben, siehe Fehlermeldung im Startbildschirm.
+  const CameraSurvey = (function(){
+    "use strict";
+    const DEG = Math.PI / 180, RAD = 180 / Math.PI;
+    const DIRS = ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
+
+    const dlg = document.getElementById('cameraModal');
+    const videoEl = document.getElementById('camVideo');
+    const azValEl = document.getElementById('camAzVal');
+    const azDirEl = document.getElementById('camAzDir');
+    const elValEl = document.getElementById('camElVal');
+    const warnEl = document.getElementById('camWarnbar');
+    const targetLabelEl = document.getElementById('camTargetLabel');
+    const startscreenEl = document.getElementById('camStartscreen');
+    const startscreenTextEl = document.getElementById('camStartscreenText');
+    const startErrEl = document.getElementById('camStartError');
+    const btnStart = document.getElementById('camBtnStart');
+    const btnStartCancel = document.getElementById('camStartCancelBtn');
+    const btnSave = document.getElementById('camBtnSave');
+    const btnToggleLog = document.getElementById('camBtnToggleLog');
+    const btnDone = document.getElementById('camBtnDone');
+    const btnClear = document.getElementById('camBtnClear');
+    const closeXEl = document.getElementById('camCloseXBtn');
+    const logEl = document.getElementById('camLog');
+    const logBodyEl = document.getElementById('camLogBody');
+    const countEl = document.getElementById('camCount');
+    const confirmOverlayEl = document.getElementById('camConfirmOverlay');
+    const confirmTextEl = document.getElementById('camConfirmText');
+    const confirmOkEl = document.getElementById('camConfirmOk');
+    const confirmCancelEl = document.getElementById('camConfirmCancel');
+    const toastEl = document.getElementById('camToast');
+
+    let stream = null, smooth = null, lastAzimuth = 0, lastElevation = 0, records = [];
+    let gotAnyOrientation = false, orientationBound = false, toastTimer = null, onCloseCb = null;
+
+    function clamp(v, lo, hi){ return Math.max(lo, Math.min(hi, v)); }
+
+    function normalizeVec(v){
+      const len = Math.sqrt(v[0]*v[0] + v[1]*v[1] + v[2]*v[2]);
+      if(len < 1e-9) return v;
+      return [v[0]/len, v[1]/len, v[2]/len];
+    }
+
+    // Blickrichtung der Rückkamera (Geräte-Z-Achse) im Welt-Koordinatensystem (x=Ost, y=Nord, z=Oben)
+    // aus alpha/beta/gamma - identisch zur Herleitung im Ursprungstool: R = Rz(alpha)*Rx(beta)*Ry(gamma)
+    // (W3C DeviceOrientation), Kamerarichtung = -R * [0,0,1]^T (dritte Spalte von R, negiert).
+    function orientationToVector(alphaDeg, betaDeg, gammaDeg){
+      const a = alphaDeg * DEG, b = betaDeg * DEG, g = gammaDeg * DEG;
+      const ca = Math.cos(a), sa = Math.sin(a);
+      const cb = Math.cos(b), sb = Math.sin(b);
+      const cg = Math.cos(g), sg = Math.sin(g);
+      const r13 = ca * sg + sa * sb * cg;
+      const r23 = sa * sg - ca * sb * cg;
+      const r33 = cb * cg;
+      return [-r13, -r23, -r33];
+    }
+
+    function vecToAzEl(v){
+      let azimuth = Math.atan2(v[0], v[1]) * RAD;
+      if(azimuth < 0) azimuth += 360;
+      const elevation = Math.asin(clamp(v[2], -1, 1)) * RAD;
+      return { azimuth, elevation };
+    }
+
+    function compassLabel(az){ return DIRS[Math.round(az / 22.5) % 16]; }
+
+    function updateDisplay(alphaDeg, betaDeg, gammaDeg){
+      const v = orientationToVector(alphaDeg, betaDeg, gammaDeg);
+      if(!smooth){ smooth = v; }
+      else{
+        smooth = normalizeVec([
+          smooth[0] + (v[0]-smooth[0]) * 0.18,
+          smooth[1] + (v[1]-smooth[1]) * 0.18,
+          smooth[2] + (v[2]-smooth[2]) * 0.18
+        ]);
+      }
+      const ae = vecToAzEl(smooth);
+      lastAzimuth = ae.azimuth;
+      lastElevation = ae.elevation;
+      azValEl.textContent = ae.azimuth.toFixed(1) + '°';
+      azDirEl.textContent = compassLabel(ae.azimuth);
+      elValEl.textContent = (ae.elevation >= 0 ? '+' : '') + ae.elevation.toFixed(1) + '°';
+    }
+
+    function setWarning(msg){
+      if(!msg){ warnEl.classList.remove('show'); warnEl.textContent = ''; return; }
+      warnEl.textContent = msg;
+      warnEl.classList.add('show');
+    }
+
+    function handleOrientation(evt){
+      gotAnyOrientation = true;
+      let alphaDeg, absolute = false;
+      if(typeof evt.webkitCompassHeading === 'number' && !isNaN(evt.webkitCompassHeading)){
+        alphaDeg = (360 - evt.webkitCompassHeading) % 360;
+        absolute = true;
+      } else if(typeof evt.alpha === 'number'){
+        alphaDeg = evt.alpha;
+        absolute = !!evt.absolute;
+      } else { return; }
+      const betaDeg = typeof evt.beta === 'number' ? evt.beta : 0;
+      const gammaDeg = typeof evt.gamma === 'number' ? evt.gamma : 0;
+      updateDisplay(alphaDeg, betaDeg, gammaDeg);
+      setWarning(absolute ? null :
+        '⚠️ Kompass evtl. nicht Nord-referenziert - Wert kann relativ sein. Falls verfügbar Kalibrierung/„Achterbewegung" durchführen.');
+    }
+
+    function startOrientationSensors(){
+      if('ondeviceorientationabsolute' in window){
+        window.addEventListener('deviceorientationabsolute', handleOrientation, true);
+      } else {
+        window.addEventListener('deviceorientation', handleOrientation, true);
+      }
+      orientationBound = true;
+      setTimeout(()=>{
+        if(!gotAnyOrientation) setWarning('⚠️ Keine Sensordaten empfangen. Bewegungssensoren evtl. nicht verfügbar/erlaubt.');
+      }, 2000);
+    }
+
+    function startCamera(){
+      return navigator.mediaDevices.getUserMedia({ video:{ facingMode:{ ideal:'environment' } }, audio:false })
+        .then(s=>{ stream = s; videoEl.srcObject = s; return videoEl.play(); });
+    }
+
+    function requestOrientationPermission(){
+      if(typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function'){
+        return DeviceOrientationEvent.requestPermission().then(state=>{
+          if(state !== 'granted') throw new Error('Zugriff auf Bewegungssensoren wurde nicht erlaubt.');
+        });
+      }
+      return Promise.resolve();
+    }
+
+    function stopEverything(){
+      if(stream){ stream.getTracks().forEach(t=>t.stop()); stream = null; }
+      videoEl.srcObject = null;
+      if(orientationBound){
+        window.removeEventListener('deviceorientationabsolute', handleOrientation, true);
+        window.removeEventListener('deviceorientation', handleOrientation, true);
+        orientationBound = false;
+      }
+      smooth = null; gotAnyOrientation = false; setWarning(null);
+    }
+
+    // Eigener Toast/Bestätigungs-Dialog statt window.alert()/confirm(): Blockierende System-Dialoge
+    // pausieren auf manchen mobilen Browsern (v.a. iOS Safari) den laufenden Kamera-Stream und lassen
+    // ihn danach eingefroren zurück - identisches Problem/identische Lösung wie im Ursprungstool.
+    function showCamToast(msg){
+      toastEl.textContent = msg;
+      toastEl.classList.add('show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(()=>toastEl.classList.remove('show'), 2200);
+    }
+
+    function showCamConfirm(message, onConfirm){
+      confirmTextEl.textContent = message;
+      confirmOverlayEl.classList.add('show');
+      function cleanup(){
+        confirmOverlayEl.classList.remove('show');
+        confirmOkEl.removeEventListener('click', okHandler);
+        confirmCancelEl.removeEventListener('click', cancelHandler);
+      }
+      function okHandler(){ cleanup(); onConfirm(); }
+      function cancelHandler(){ cleanup(); }
+      confirmOkEl.addEventListener('click', okHandler);
+      confirmCancelEl.addEventListener('click', cancelHandler);
+    }
+
+    function renderLog(){
+      logBodyEl.innerHTML = '';
+      records.forEach((r,i)=>{
+        const tr = document.createElement('tr');
+        tr.innerHTML =
+          '<td>' + (i+1) + '</td>' +
+          '<td>' + r.azimuth.toFixed(1) + '°</td>' +
+          '<td>' + (r.elevation >= 0 ? '+' : '') + r.elevation.toFixed(1) + '°</td>' +
+          '<td class="cam-del" data-i="' + i + '">✕</td>';
+        logBodyEl.appendChild(tr);
+      });
+      countEl.textContent = String(records.length);
+    }
+
+    logBodyEl.addEventListener('click', (e)=>{
+      const i = e.target.getAttribute('data-i');
+      if(i !== null){ records.splice(parseInt(i,10), 1); renderLog(); }
+    });
+
+    btnSave.addEventListener('click', ()=>{
+      records.push({ azimuth:lastAzimuth, elevation:lastElevation });
+      renderLog();
+      showCamToast('Punkt ' + records.length + ' gespeichert.');
+    });
+
+    btnToggleLog.addEventListener('click', ()=>logEl.classList.toggle('show'));
+
+    btnClear.addEventListener('click', ()=>{
+      if(!records.length) return;
+      showCamConfirm('Alle ' + records.length + ' gespeicherten Punkte löschen?', ()=>{
+        records = []; renderLog();
+      });
+    });
+
+    // pendingResult ist die einzige Quelle der Wahrheit dafür, WAS beim nächsten 'close'-Event an den
+    // Aufrufer gemeldet wird: null = abgebrochen (X, "Abbrechen" im Startbildschirm ODER native
+    // Escape-Taste - alle drei laufen zwangsläufig über denselben 'close'-Listener unten), ein Array =
+    // "Übernehmen" wurde geklickt. So gibt es nur EINE Stelle, die den Callback aufruft (im
+    // 'close'-Listener), unabhängig davon, WIE der Dialog geschlossen wurde - kein Risiko, den
+    // Callback versehentlich doppelt (oder mit uneindeutiger zeitlicher Reihenfolge) auszulösen.
+    let pendingResult = null;
+
+    function discardAndClose(){
+      pendingResult = null;
+      dlg.close();
+    }
+    closeXEl.addEventListener('click', discardAndClose);
+    btnStartCancel.addEventListener('click', discardAndClose);
+
+    btnDone.addEventListener('click', ()=>{
+      if(!records.length){ showCamToast('Keine Punkte zum Übernehmen vorhanden.'); return; }
+      pendingResult = records.map(r=>({
+        az: Math.round(r.azimuth * 10) / 10,
+        el: Math.round(clamp(r.elevation, 0, 90) * 10) / 10
+      }));
+      dlg.close();
+    });
+
+    btnStart.addEventListener('click', ()=>{
+      startErrEl.style.display = 'none';
+      btnStart.disabled = true;
+      btnStart.textContent = 'Starte …';
+      // Wichtig: requestPermission() für die Sensoren muss auf iOS als allererstes passieren, noch
+      // innerhalb der Tap-Geste. Wird zuerst auf die (asynchrone) Kamera-Erlaubnis gewartet, gilt der
+      // Tap in Safari als "verbraucht" und der Sensor-Dialog schlägt fehl (identisch zum Ursprungstool).
+      requestOrientationPermission()
+        .then(startCamera)
+        .then(()=>{
+          startOrientationSensors();
+          startscreenEl.style.display = 'none';
+        })
+        .catch(err=>{
+          btnStart.disabled = false;
+          btnStart.textContent = 'Kamera & Sensoren aktivieren';
+          startErrEl.style.display = 'block';
+          startErrEl.textContent = 'Fehler: ' + (err && err.message ? err.message : err) +
+            '  (Seite muss über HTTPS oder http://localhost aufgerufen werden - siehe Doku.)';
+        });
+    });
+
+    // Läuft bei JEDEM Schließen des Dialogs (Button-Klick oder native Escape-Taste) - einziger,
+    // zentraler Aufräum- UND Melde-Ort statt Duplizierung an jeder Schließen-Stelle. Ruft den beim
+    // open() übergebenen Callback GENAU EINMAL auf, mit "null" bei Abbruch oder dem Punkte-Array bei
+    // "Übernehmen" (siehe pendingResult oben).
+    dlg.addEventListener('close', ()=>{
+      stopEverything();
+      const result = pendingResult;
+      pendingResult = null;
+      records = [];
+      renderLog();
+      logEl.classList.remove('show');
+      const cb = onCloseCb;
+      onCloseCb = null;
+      if(cb) cb(result);
+    });
+
+    function open(kind, onClose){
+      onCloseCb = onClose;
+      pendingResult = null;
+      records = [];
+      renderLog();
+      logEl.classList.remove('show');
+      setWarning(null);
+      startscreenEl.style.display = 'flex';
+      startErrEl.style.display = 'none';
+      btnStart.disabled = false;
+      btnStart.textContent = 'Kamera & Sensoren aktivieren';
+      targetLabelEl.textContent = kind === 'horizon'
+        ? 'Vermessung für: Untere Grenze (Hindernisse von unten/seitlich)'
+        : 'Vermessung für: Obere Grenze (Verdeckung von oben)';
+      startscreenTextEl.textContent = kind === 'horizon'
+        ? 'Peile mit der Rückkamera auf die höchste Kante eines Hindernisses (z. B. Hausdach, Baum) und speichere dort einen Punkt.'
+        : 'Peile mit der Rückkamera auf die Unterkante einer Verdeckung von oben (z. B. Balkondecke) und speichere dort einen Punkt.';
+      dlg.showModal();
+    }
+
+    return { open };
+  })();
+
   function openLocationModal(mode, locationId){
     editingLocationId = mode === 'edit' ? locationId : null;
     const loc = mode === 'edit' ? locations.find(l=>l.id===locationId) : null;
@@ -1680,6 +2175,50 @@
   // (z.B. beim Ausfüllen der Stützpunkt-Tabelle) nicht die bisherige Eingabe verwirft.
   document.getElementById('locAddHorizonRow').addEventListener('click', ()=>addLocProfileRow('horizon', 225, 30, ''));
   document.getElementById('locAddCeilingRow').addEventListener('click', ()=>addLocProfileRow('ceiling', 250, 70, ''));
+
+  // Übernimmt vermessene Punkte in die passende Stützpunkt-Tabelle des Standort-Fensters (nicht
+  // direkt in "locations[]"/localStorage) - genau wie händisch hinzugefügte Zeilen werden sie erst
+  // mit "Speichern" wirklich übernommen, können also vorher noch geprüft/gelöscht/angepasst werden.
+  // Kappt an MAX_PROFILE_POINTS mit EINER zusammenfassenden Meldung, statt die Warnung von
+  // addLocProfileRow() für jeden überzähligen Punkt einzeln anzuzeigen. Öffnet das Standort-Fenster
+  // NICHT selbst wieder - das übernimmt zentral der 'close'-Listener auf #cameraModal weiter unten,
+  // und zwar für JEDEN Ausgang aus der Kamera-Ansicht (Übernehmen genauso wie Abbrechen/X/Escape) -
+  // sonst würde .showModal() hier ein zweites Mal aufgerufen und eine Exception werfen, weil das
+  // Standort-Fenster durch den 'close'-Listener zu diesem Zeitpunkt schon wieder offen ist.
+  function importSurveyedPoints(kind, points){
+    const tbody = document.getElementById(kind === 'horizon' ? 'locHorizonRows' : 'locCeilingRows');
+    const free = Math.max(0, MAX_PROFILE_POINTS - tbody.children.length);
+    const toAdd = points.slice(0, free);
+    toAdd.forEach(p=>addLocProfileRow(kind, p.az, p.el, 'vermessen'));
+    if(toAdd.length < points.length){
+      showToast(`${toAdd.length} von ${points.length} vermessenen Punkten übernommen (Obergrenze ${MAX_PROFILE_POINTS} erreicht).`);
+    } else {
+      showToast(`${toAdd.length} vermessene(r) Punkt(e) übernommen.`);
+    }
+  }
+
+  // Standort-Fenster wird bewusst geschlossen (nicht nur überlagert), bevor die Kamera-Ansicht
+  // öffnet: .close() lässt alle bisherigen Eingaben im Standort-Fenster unangetastet im DOM stehen,
+  // und die Kamera-Ansicht bekommt so den vollen Bildschirm ohne Verschachtelungsrisiko zweier
+  // gleichzeitig offener <dialog>-Elemente. Der von CameraSurvey.open() übergebene Callback wird
+  // GENAU EINMAL aufgerufen, sobald die Kamera-Ansicht (gleich welcher Ausgang: Übernehmen, X,
+  // Abbrechen im Startbildschirm, native Escape-Taste) schließt - "points" ist dabei entweder null
+  // (Abbruch) oder das Array der vermessenen Punkte (Übernehmen). Das Standort-Fenster wird in JEDEM
+  // Fall genau hier wieder geöffnet, damit der Nutzer nie "zwischen" beiden Fenstern landet.
+  document.getElementById('locSurveyHorizonBtn').addEventListener('click', ()=>{
+    document.getElementById('locationModal').close();
+    CameraSurvey.open('horizon', points=>{
+      document.getElementById('locationModal').showModal();
+      if(points) importSurveyedPoints('horizon', points);
+    });
+  });
+  document.getElementById('locSurveyCeilingBtn').addEventListener('click', ()=>{
+    document.getElementById('locationModal').close();
+    CameraSurvey.open('ceiling', points=>{
+      document.getElementById('locationModal').showModal();
+      if(points) importSurveyedPoints('ceiling', points);
+    });
+  });
 
   document.getElementById('locSaveBtn').addEventListener('click', ()=>{
     const name = document.getElementById('locName').value.trim();
