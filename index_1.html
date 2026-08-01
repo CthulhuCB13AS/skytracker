@@ -1,0 +1,3129 @@
+<!DOCTYPE html>
+<!-- Skytracker_BP17 – Version V2.17 -->
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Skytracker &ndash; Balkon-Sichtfenster</title>
+<style>
+  :root{
+    --bg:#0f1420; --panel:#171d2b; --panel2:#1e2536; --border:#2a3348;
+    --text:#e7ecf5; --muted:#93a0bb; --accent:#5fb3ff; --accent2:#7ee7c7;
+    --warn:#f4c258; --bad:#f2687a; --good:#7ee7c7;
+    --radius:10px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--bg); color:var(--text); line-height:1.5;
+  }
+  header{
+    padding:28px 24px 18px; max-width:1180px; margin:0 auto;
+    display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;
+  }
+  h1{ font-size:1.5rem; margin:0; font-weight:650; }
+  main{ max-width:1180px; margin:0 auto; padding:0 24px 60px; }
+  .docview{ max-width:900px; margin:0 auto; padding:0 24px 60px; }
+  .grid{ display:grid; grid-template-columns:1.15fr 0.85fr; gap:18px; align-items:start; }
+  @media (max-width:900px){ .grid{ grid-template-columns:1fr; } }
+  .card{
+    background:var(--panel); border:1px solid var(--border); border-radius:var(--radius);
+    padding:18px 20px; margin-bottom:18px;
+  }
+  .card h2{ font-size:1.02rem; margin:0 0 12px; }
+  .field-row{ display:flex; flex-wrap:wrap; gap:12px; margin-bottom:12px; align-items:flex-end; }
+  .field{ flex:1 1 140px; min-width:120px; }
+  .field label{ display:block; font-size:0.78rem; color:var(--muted); margin-bottom:4px; }
+  .field input[type=number], .field input[type=date], .field input[type=text], .field select{
+    width:100%; background:var(--panel2); border:1px solid var(--border); color:var(--text);
+    border-radius:7px; padding:7px 9px; font-size:0.9rem; height:36px; box-sizing:border-box;
+    display:block; margin:0; vertical-align:top;
+  }
+  /* iOS Safari rendert input[type=date] sonst mit einem eigenen nativen Chrome-Element, das Höhe/
+     Breite aus der Regel oben teilweise ignoriert - auf dem iPhone führte das zu einem Datumsfeld,
+     das höher/breiter als das benachbarte Zahlenfeld war (bis hin zu optischem Überlappen). Mit
+     -webkit-appearance:none behandelt Safari das Feld wie ein normales Eingabefeld nach unserem CSS,
+     statt seine eigene native Höhe/Breite zu erzwingen. */
+  .field input[type=date]{
+    -webkit-appearance:none; appearance:none; min-height:36px;
+  }
+  .field input:focus, .field select:focus{ outline:1px solid var(--accent); }
+  .field input[readonly]{ opacity:0.7; cursor:default; }
+  /* Hoch-/Runter-Pfeile bei Zahlenfeldern ausblenden - es wird ausschließlich manuell eingetragen,
+     die Spinner-Pfeile werden nicht benötigt (gilt für alle Zahlenfelder, auch außerhalb von .field,
+     z.B. in den Stützpunkt-Tabellen im Standort-Fenster). */
+  input[type=number]::-webkit-outer-spin-button,
+  input[type=number]::-webkit-inner-spin-button{ -webkit-appearance:none; margin:0; }
+  input[type=number]{ -moz-appearance:textfield; appearance:textfield; }
+  #locationModal::backdrop{ background:rgba(5,8,14,0.6); }
+  .checkline{ display:flex; align-items:center; gap:8px; font-size:0.85rem; color:var(--muted); margin-bottom:8px; }
+  .checkline input{ accent-color:var(--accent); }
+  button{
+    background:var(--accent); color:#0b1020; border:none; border-radius:8px;
+    padding:10px 18px; font-size:0.92rem; font-weight:600; cursor:pointer;
+  }
+  button.secondary{ background:var(--panel2); color:var(--text); border:1px solid var(--border); }
+  button:disabled{ opacity:0.45; cursor:not-allowed; }
+  #status{ font-size:0.85rem; color:var(--muted); margin-top:10px; min-height:1.2em; }
+  #fallback{ display:none; margin-top:14px; padding:14px; background:var(--panel2); border-radius:8px; border:1px dashed var(--border); font-size:0.85rem; }
+  #fallback a{ color:var(--accent); word-break:break-all; }
+  #fallback input[type=file]{ margin-top:8px; }
+  .compass-wrap{ display:flex; gap:18px; align-items:center; flex-wrap:wrap; justify-content:center; }
+  svg text{ fill:var(--muted); font-size:9px; }
+  #compassTooltip{
+    position:fixed; display:none; background:var(--panel2); border:1px solid var(--border);
+    border-radius:6px; padding:5px 9px; font-size:0.76rem; color:var(--text); pointer-events:none; z-index:1000;
+  }
+  #highlightInfo{ margin-top:8px; display:none; font-size:0.8rem; color:var(--muted); }
+  table{ width:100%; border-collapse:collapse; font-size:0.83rem; }
+  thead th{
+    position:sticky; top:0; background:var(--panel2); text-align:left; padding:8px 8px;
+    border-bottom:1px solid var(--border); cursor:pointer; white-space:nowrap; color:var(--muted); font-weight:600;
+  }
+  thead th:hover{ color:var(--text); }
+  tbody td{ padding:7px 8px; border-bottom:1px solid var(--border); vertical-align:top; }
+  tbody tr{ cursor:pointer; }
+  tbody tr:hover{ background:rgba(255,255,255,0.03); }
+  tbody tr.row-highlighted{ background:rgba(95,179,255,0.16); }
+  tbody tr.row-highlighted:hover{ background:rgba(95,179,255,0.22); }
+  .tablewrap{ max-height:640px; overflow:auto; border:1px solid var(--border); border-radius:8px; }
+  .badge{ display:inline-block; padding:2px 8px; border-radius:10px; font-size:0.74rem; font-weight:700; white-space:normal; line-height:1.3; text-align:center; }
+  .badge.good{ background:rgba(126,231,199,0.15); color:var(--good); }
+  .badge.warn{ background:rgba(244,194,88,0.15); color:var(--warn); }
+  .badge.bad{ background:rgba(242,104,122,0.15); color:var(--bad); }
+  .status-cell{ max-width:120px; }
+  .small{ font-size:0.76rem; color:var(--muted); }
+  .links{ display:flex; flex-direction:column; gap:3px; }
+  .links a{ color:var(--accent); text-decoration:none; font-size:0.76rem; }
+  .links a:hover{ text-decoration:underline; }
+  .toolbar{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:12px; }
+  .toolbar input[type=text]{ background:var(--panel2); border:1px solid var(--border); color:var(--text); border-radius:7px; padding:7px 10px; font-size:0.85rem; }
+  code{ background:var(--panel2); padding:1px 5px; border-radius:4px; font-size:0.85em; }
+  .count-pill{ background:var(--panel2); border:1px solid var(--border); border-radius:999px; padding:4px 12px; font-size:0.78rem; color:var(--muted); }
+  .docview h2{ font-size:1.15rem; margin:32px 0 10px; }
+  .docview h2:first-of-type{ margin-top:6px; }
+  .docview h3{ font-size:0.95rem; margin:18px 0 6px; color:var(--text); }
+  .docview p{ color:var(--text); font-size:0.92rem; }
+  .docview dl{ font-size:0.88rem; }
+  .docview dt{ color:var(--accent2); font-weight:600; margin-top:8px; }
+  .docview dd{ margin:2px 0 0 0; color:var(--muted); }
+  .toast{
+    position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:var(--panel2);
+    border:1px solid var(--border); color:var(--text); padding:10px 16px; border-radius:8px;
+    font-size:0.85rem; z-index:2000; opacity:0; transition:opacity 0.2s;
+  }
+  .toast.show{ opacity:1; }
+
+  /* ================= Kamera-Vermessung (#cameraModal) =================
+     Portiert aus der vom Nutzer bereitgestellten "Azimuth und Höhenwinkel.html" (Kamerabild +
+     Kompass/Neigungssensor zur Direktvermessung von Stützpunkten), direkt in Skytracker integriert
+     statt als separate Datei - siehe Doku-Abschnitt "1. Standort & Sichtfenster" für Details/Grenzen.
+     Alle Selektoren sind bewusst auf "#cameraModal ..." begrenzt, damit sie NICHT die normalen
+     Skytracker-Buttons/-Texte (z.B. das globale "button{...}") überschreiben - nur innerhalb dieses
+     einen Dialogs gilt der dunkle, halbtransparente Kamera-Look des Ursprungstools. */
+  #cameraModal{
+    position:fixed; inset:0; margin:0; padding:0; border:none;
+    width:100vw; height:100vh; max-width:100vw; max-height:100vh;
+    background:#000; color:#fff; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  }
+  #cameraModal::backdrop{ background:#000; }
+  #camVideo{
+    position:fixed; inset:0; width:100%; height:100%; object-fit:cover; background:#111; z-index:0;
+  }
+  #camCrosshair{
+    position:fixed; top:50%; left:50%; width:56px; height:56px;
+    transform:translate(-50%,-50%); z-index:5; pointer-events:none;
+  }
+  #camCrosshair::before, #camCrosshair::after{
+    content:""; position:absolute; background:rgba(255,255,255,0.85); box-shadow:0 0 3px rgba(0,0,0,0.8);
+  }
+  #camCrosshair::before{ top:50%; left:0; width:100%; height:2px; transform:translateY(-1px); }
+  #camCrosshair::after{ left:50%; top:0; height:100%; width:2px; transform:translateX(-1px); }
+  #camCrosshair .cam-dot{
+    position:absolute; top:50%; left:50%; width:6px; height:6px;
+    background:#ff4444; border-radius:50%; transform:translate(-50%,-50%);
+  }
+  #camReadout{
+    position:fixed; top:0; left:0; right:0; z-index:6;
+    padding:max(14px, env(safe-area-inset-top)) 16px 12px 16px;
+    background:linear-gradient(rgba(0,0,0,0.75), rgba(0,0,0,0.15));
+    display:flex; flex-direction:column; gap:6px;
+  }
+  #camTargetLabel{ font-size:12.5px; text-align:center; opacity:0.85; }
+  .cam-metrics-row{ display:flex; align-items:center; gap:8px; }
+  .cam-metric{ text-align:center; flex:1; }
+  .cam-metric .cam-label{ font-size:12px; letter-spacing:0.08em; text-transform:uppercase; opacity:0.75; }
+  .cam-metric .cam-value{ font-size:30px; font-weight:600; font-variant-numeric:tabular-nums; line-height:1.25; }
+  .cam-metric .cam-sub{ font-size:12px; opacity:0.7; }
+  #camCloseXBtn{
+    flex:0 0 auto; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); color:#fff;
+    border-radius:8px; padding:4px 12px; font-size:1.05rem; line-height:1.2; cursor:pointer;
+  }
+  #camWarnbar{
+    position:fixed; top:92px; left:50%; transform:translateX(-50%);
+    z-index:7; max-width:92%;
+    background:rgba(180,60,0,0.92); color:#fff;
+    padding:6px 12px; border-radius:8px; font-size:12.5px;
+    text-align:center; display:none;
+  }
+  #camWarnbar.show{ display:block; }
+  #camControls{
+    position:fixed; left:0; right:0; bottom:0; z-index:6;
+    padding:10px 12px max(12px, env(safe-area-inset-bottom)) 12px;
+    background:linear-gradient(rgba(0,0,0,0.15), rgba(0,0,0,0.8));
+  }
+  .cam-btnrow{ display:flex; gap:6px; flex-wrap:nowrap; }
+  #cameraModal button{
+    font:inherit; font-size:12.5px; font-weight:500;
+    color:rgba(255,255,255,0.82); background:rgba(255,255,255,0.08);
+    border:1px solid rgba(255,255,255,0.16);
+    border-radius:9px; padding:9px 6px;
+  }
+  #cameraModal button:active{ background:rgba(255,255,255,0.18); }
+  .cam-btnrow button{ flex:1 1 0; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  #cameraModal button.primary{ background:#2f8f4e; border-color:#2f8f4e; color:#fff; }
+  #cameraModal button.primary:active{ background:#267a41; }
+  #camLog{
+    max-height:22vh; overflow-y:auto; margin-top:8px;
+    background:rgba(0,0,0,0.55); border-radius:10px; display:none;
+  }
+  #camLog.show{ display:block; }
+  #camLog table{ width:100%; border-collapse:collapse; font-size:12.5px; }
+  #camLog th, #camLog td{ padding:5px 8px; text-align:right; border-bottom:1px solid rgba(255,255,255,0.1); }
+  #camLog th:first-child, #camLog td:first-child{ text-align:left; }
+  #camLog td.cam-del{ text-align:center; color:#ff6b6b; font-weight:700; cursor:pointer; }
+  #camStartscreen{
+    position:fixed; inset:0; z-index:20; background:#0b0f0c;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    padding:24px; text-align:center; gap:14px;
+  }
+  #camStartscreen h1{ font-size:20px; margin:0; }
+  #camStartscreen p{ font-size:14px; opacity:0.8; max-width:340px; line-height:1.5; margin:0; }
+  #camStartscreen button.primary{ font-size:17px; padding:14px 28px; }
+  #camStartError{ color:#ff8a8a; font-size:13px; max-width:340px; display:none; }
+  #camToast{
+    position:fixed; left:50%; bottom:92px; transform:translateX(-50%);
+    z-index:25; background:rgba(20,20,20,0.92); color:#fff;
+    padding:9px 16px; border-radius:9px; font-size:13px;
+    max-width:85%; text-align:center;
+    opacity:0; pointer-events:none; transition:opacity 0.2s ease;
+  }
+  #camToast.show{ opacity:1; }
+  #camConfirmOverlay{
+    position:fixed; inset:0; z-index:30; background:rgba(0,0,0,0.55);
+    display:none; align-items:center; justify-content:center; padding:24px;
+  }
+  #camConfirmOverlay.show{ display:flex; }
+  #camConfirmBox{
+    background:#16201a; border:1px solid rgba(255,255,255,0.15);
+    border-radius:14px; padding:20px; max-width:320px; width:100%; text-align:center;
+  }
+  #camConfirmBox p{ margin:0 0 16px 0; font-size:14.5px; line-height:1.4; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🔭 Skytracker</h1>
+  <button type="button" id="showDocBtn">Doku</button>
+</header>
+
+<main id="plannerView">
+
+  <div class="toolbar" style="margin-bottom:18px;">
+    <button type="button" id="modeExoBtn">Exoplaneten</button>
+    <button type="button" id="modeDsoBtn" class="secondary">Deep-Sky-Objekte</button>
+  </div>
+
+  <div class="grid">
+    <div>
+      <div class="card">
+        <h2>1. Standort &amp; Sichtfenster</h2>
+        <div class="field" style="margin-bottom:10px;">
+          <label>Standort</label>
+          <div id="locationTiles" style="display:flex; flex-wrap:wrap; gap:6px;"></div>
+        </div>
+        <div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:14px;">
+          <button type="button" id="newLocationBtn" class="secondary" style="padding:6px 12px; font-size:0.8rem;">+ Neuer Standort</button>
+          <button type="button" id="editLocationBtn" class="secondary" style="padding:6px 12px; font-size:0.8rem;">Bearbeiten</button>
+          <button type="button" id="deleteLocationBtn" class="secondary" style="padding:6px 12px; font-size:0.8rem;">Löschen</button>
+          <button type="button" id="exportLocationsBtn" class="secondary" style="padding:6px 12px; font-size:0.8rem;">Standorte exportieren</button>
+          <button type="button" id="importLocationsBtn" class="secondary" style="padding:6px 12px; font-size:0.8rem;">Standorte importieren</button>
+          <input type="file" id="importLocationsInput" accept=".json,application/json" style="display:none;">
+        </div>
+        <div class="field-row">
+          <div class="field"><label>Breite (Lat, &deg;N)</label><input type="number" id="lat" value="52.479476" step="0.0001" readonly></div>
+          <div class="field"><label>Länge (Lon, &deg;O)</label><input type="number" id="lon" value="13.329154" step="0.0001" readonly></div>
+        </div>
+        <!-- Azimut-Start/-Ende werden hier bewusst nicht mehr angezeigt (auf Wunsch entfernt) - die
+             Felder bleiben unsichtbar im DOM bestehen, weil drawCompass()/compute()/computeDso() ihre
+             Werte weiterhin per getElementById('azStart'/'azEnd').value lesen; die Werte selbst kommen
+             nach wie vor aus dem aktiven Standort (siehe applyActiveLocationFields()) und sind über
+             "Bearbeiten" änderbar. -->
+        <div class="field-row" style="display:none;">
+          <div class="field"><label>Azimut-Start (&deg;, harte Grenze)</label><input type="number" id="azStart" value="180" min="0" max="360" readonly></div>
+          <div class="field"><label>Azimut-Ende (&deg;, harte Grenze)</label><input type="number" id="azEnd" value="313" min="0" max="360" readonly></div>
+        </div>
+        <p class="small" id="locStuetzpunkteInfo" style="margin:4px 0 12px;"></p>
+        <div class="compass-wrap" style="margin-top:14px; flex-direction:column; gap:4px;">
+          <svg id="compassSvg" width="320" height="320" viewBox="0 0 320 320"></svg>
+          <p class="small" style="margin:0;">Mit dem Mausrad zum Mauszeiger hin zoomen (hoch = rein, runter = raus); Doppelklick setzt den Zoom zurück.</p>
+        </div>
+        <div id="highlightInfo">
+          Bahn im Diagramm: <strong id="highlightName"></strong>
+          <button type="button" id="clearHighlight" class="secondary" style="padding:2px 8px; font-size:0.72rem; margin-left:6px;">Zurücksetzen</button>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="card">
+        <h2>2. Zeitraum &amp; Dunkelheit</h2>
+        <div class="field-row">
+          <div class="field"><label>Start-Datum</label><input type="date" id="startDate"></div>
+          <div class="field"><label>Anzahl Nächte</label><input type="number" id="daysAhead" value="30" min="1" max="365"></div>
+          <div class="field">
+            <label>Dämmerungsgrenze</label>
+            <select id="twilight">
+              <option value="-6">Bürgerlich (-6&deg;)</option>
+              <option value="-12" selected>Nautisch (-12&deg;) &ndash; Standard</option>
+              <option value="-18">Astronomisch (-18&deg;)</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" id="zielExoCard">
+        <h2>3. Zielauswahl (Exoplaneten)</h2>
+        <div class="field-row">
+          <div class="field"><label>Max. Wirtsstern-Helligkeit (V-Mag)</label><input type="number" id="maxMag" value="12" step="0.5"></div>
+          <div class="field"><label>Min. Transittiefe (%)</label><input type="number" id="minDepth" value="0.5" step="0.1"></div>
+          <div class="field"><label>Max. Belichtungsfenster (Std.)</label><input type="number" id="maxExposure" value="4" step="0.5"></div>
+          <div class="field"><label>Rand vor/nach Transit (Min.)</label><input type="number" id="bufferMin" value="30" step="5"></div>
+        </div>
+        <div class="checkline"><input type="checkbox" id="hideUnknownMag"> <label for="hideUnknownMag">Objekte ohne bekannte Helligkeit ausblenden</label></div>
+        <div class="checkline"><input type="checkbox" id="hideUnknownDepth"> <label for="hideUnknownDepth">Objekte ohne bekannte Transittiefe ausblenden</label></div>
+        <div style="display:flex; flex-direction:column; gap:3px; margin-top:8px;">
+          <button id="loadBtn">Daten laden (NASA Exoplanet Archive)</button>
+          <button id="recomputeBtn" class="secondary" disabled>Neu berechnen (gleiche Daten, neue Filter)</button>
+        </div>
+        <div id="status"></div>
+        <div id="loadLog" class="small" style="margin-top:6px; display:flex; flex-direction:column; gap:2px;"></div>
+        <div id="fallback">
+          <strong>Alle automatischen Wege sind fehlgeschlagen.</strong><br>
+          Schauen Sie oben im Log, welche Fehlermeldung bei jedem der vier Versuche stand &ndash; das grenzt die Ursache meist gut ein (z.&nbsp;B. "HTTP-Status 429" = Proxy überlastet, "Zeitüberschreitung" = Netzwerk/Firewall, generisches "Failed to fetch" = Browser blockiert die Anfrage komplett, oft durch Adblocker/Tracking-Schutz oder DNS-Filter). Der Browser gibt uns bei "Failed to fetch" leider keinen genaueren Grund preis; falls das bei allen vier Versuchen steht, öffnen Sie einmal die Entwicklerkonsole (F12 &rarr; Tab „Konsole&ldquo;) und klicken erneut auf „Daten laden&ldquo; &ndash; dort steht die echte Fehlermeldung des Browsers. Falls Sie einen Adblocker/Privacy-Erweiterung oder ein DNS-Filter (Pi-hole, NextDNS, Firmen-Firewall) nutzen: <code>allorigins.win</code>, <code>codetabs.com</code>, <code>corsproxy.io</code> und <code>exoplanetarchive.ipac.caltech.edu</code> müssten dort erlaubt sein.
+          <details style="margin-top:8px;">
+            <summary style="cursor:pointer; color:var(--muted);">Nur falls gar nichts geht: Daten manuell laden</summary>
+            <ol>
+              <li>Öffnen Sie diesen Link in einem neuen Tab: <a id="manualUrl" href="#" target="_blank">&hellip;</a></li>
+              <li>Speichern Sie die Seite als <code>.csv</code>-Datei (Rechtsklick &rarr; Speichern unter, oder Strg/Cmd+S).</li>
+              <li>Laden Sie die Datei hier hoch:</li>
+            </ol>
+            <input type="file" id="csvUpload" accept=".csv,text/csv">
+          </details>
+        </div>
+      </div>
+
+      <div class="card" id="zielDsoCard" style="display:none;">
+        <h2>3. Zielauswahl (Deep-Sky)</h2>
+        <div class="field-row">
+          <div class="field"><label>Max. Helligkeit (mag)</label><input type="number" id="dsoMaxMag" value="9" step="0.5"></div>
+          <div class="field"><label>Min. Größe (Bogenmin.)</label><input type="number" id="dsoMinSize" value="5" step="1" min="0"></div>
+        </div>
+        <div class="checkline"><input type="checkbox" id="dsoCatGalaxies" checked> <label for="dsoCatGalaxies">Galaxien</label></div>
+        <div class="checkline"><input type="checkbox" id="dsoCatClusters" checked> <label for="dsoCatClusters">Sternhaufen</label></div>
+        <div class="checkline"><input type="checkbox" id="dsoCatNebulae" checked> <label for="dsoCatNebulae">Nebel</label></div>
+        <div class="checkline"><input type="checkbox" id="dsoMessierOnly"> <label for="dsoMessierOnly">Nur Messier-Objekte</label></div>
+        <button type="button" id="computeDsoBtn" style="margin-top:8px;">Deep-Sky-Objekte berechnen</button>
+        <p class="small" style="margin-top:8px;">Eingebetteter Katalog: 563 Objekte (Messier + NGC/IC heller als 10&nbsp;mag), Quelle OpenNGC &ndash; siehe Doku.</p>
+      </div>
+
+      <div class="card">
+        <h2>Zusammenfassung</h2>
+        <div id="summary" class="small">Noch keine Daten geladen.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" id="resultsCardExo">
+    <h2>Beobachtbare Transits</h2>
+    <div class="toolbar">
+      <input type="text" id="searchBox" placeholder="Planet/Stern suchen&hellip;">
+      <span class="count-pill" id="rowCount">0 Ergebnisse</span>
+    </div>
+    <div class="tablewrap">
+      <table id="resultsTable">
+        <thead>
+          <tr>
+            <th data-key="pl_name" title="Name des Exoplaneten (NASA-Bezeichnung, Wirtsstern + Buchstabe)">Planet</th>
+            <th data-key="constellation" title="Sternbild des Wirtssterns – angenähert über das nächstgelegene Sternbildzentrum, nicht die exakte IAU-Grenze (siehe Methodik)">Sternbild</th>
+            <th data-key="sy_vmag" title="Scheinbare Helligkeit (visuell) des Wirtssterns – je kleiner, desto heller">V-Mag</th>
+            <th data-key="depth" title="Transittiefe: relativer Helligkeitsabfall des Sterns während des Transits, in Prozent">Tiefe</th>
+            <th data-key="durH" title="Dauer des reinen Transits, ohne Vor-/Nachlaufpuffer">Dauer</th>
+            <th data-key="window" title="Zeitraum, in dem beobachtet werden sollte, inkl. Vor-/Nachlaufpuffer (Ortszeit Berlin)">Beobachtungsfenster<br>(inkl. Rand)</th>
+            <th data-key="altRange" title="Minimale und maximale Höhe des Objekts über dem Horizont während des Beobachtungsfensters">Höhe</th>
+            <th data-key="azRange" title="Azimut (Kompassrichtung, 0°=Nord) des Objekts zu Beginn und Ende des Kern-Transits">Azimut</th>
+            <th data-key="status" title="Ob der komplette Zeitraum inkl. Rand innerhalb des Sichtfensters liegt, oder nur der Kern-Transit">Status</th>
+            <th title="Externe Links: NASA-Systemübersicht des Wirtssterns und Stellarium-Fokus (siehe Doku)">Links</th>
+          </tr>
+        </thead>
+        <tbody id="resultsBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card" id="resultsCardDso" style="display:none;">
+    <h2>Beobachtbare Deep-Sky-Objekte</h2>
+    <div class="toolbar">
+      <input type="text" id="searchBoxDso" placeholder="Objekt suchen&hellip;">
+      <span class="count-pill" id="rowCountDso">0 Ergebnisse</span>
+    </div>
+    <div class="tablewrap">
+      <table id="resultsTableDso">
+        <thead>
+          <tr>
+            <th data-key="name" title="Katalogname (Messier-Nummer bevorzugt) und, falls bekannt, gebräuchlicher Name">Objekt</th>
+            <th data-key="typeLabel" title="Objekttyp (Galaxie, Sternhaufen, Nebel, …)">Typ</th>
+            <th data-key="constellation" title="Sternbild laut Katalog, ausgeschrieben (Serpens wird als „Serpens (Caput)“ bzw. „Serpens (Cauda)“ unterschieden)">Sternbild</th>
+            <th data-key="mag" title="Scheinbare Helligkeit – je kleiner, desto heller">Helligkeit</th>
+            <th data-key="size" title="Scheinbare Größe (längste Achse) in Bogenminuten">Größe</th>
+            <th data-key="nights" title="Nächte im gewählten Zeitraum, in denen das Objekt mindestens einmal gleichzeitig im Sichtfenster und am dunklen Himmel steht">Beobachtbar</th>
+            <th data-key="maxWindow" title="Längste zusammenhängende Zeit, die das Objekt in der besten Nacht durchgehend im Sichtfenster und am dunklen Himmel stand">Max. Zeit im Fenster</th>
+            <th data-key="tmid" title="Beste einzelne Nacht im Zeitraum: Zeitfenster und maximal erreichte Höhe">Beste Nacht</th>
+            <th title="Externer Link: Stellarium-Fokus (siehe Doku)">Links</th>
+          </tr>
+        </thead>
+        <tbody id="resultsBodyDso"></tbody>
+      </table>
+    </div>
+  </div>
+
+</main>
+
+<div class="docview" id="docView" style="display:none;">
+  <button type="button" id="backToPlannerBtn" style="margin:20px 0 10px;">&larr; Zurück zum Planer</button>
+
+  <p class="small">Version: V2.17</p>
+  <h2>Überblick</h2>
+  <p>
+    Dieses Tool findet Himmelsobjekte, die mit einem Linsenteleskop (432&nbsp;mm Brennweite, 72&nbsp;mm
+    Öffnung, f/6) durch ein individuelles Balkon-Sichtfenster tatsächlich beobachtbar sind &ndash; inklusive
+    Dunkelheit und richtungsabhängigem Horizont-/Obergrenzenprofil. Zwei Modi (oben umschaltbar) nutzen
+    Standort/Sichtfenster und Zeitraum/Dunkelheit gemeinsam: <strong>Exoplaneten</strong> sucht Transits
+    (Datenquelle NASA Exoplanet Archive, inkl. maximaler Belichtungsdauer) mit Links zu var.astro.cz und der
+    NASA-Systemübersicht; <strong>Deep-Sky-Objekte</strong> sucht Nächte, in denen Galaxien, Sternhaufen oder
+    Nebel aus einem eingebetteten Katalog (Messier + helle NGC/IC, Quelle OpenNGC) im Sichtfenster stehen.
+    Beide Modi verlinken zusätzlich optional auf Stellarium.
+  </p>
+
+  <h2>1. Standort &amp; Sichtfenster</h2>
+  <p>
+    Alle Sichtfenster-Daten (Koordinaten, Azimut-Start/-Ende sowie untere/obere Grenze) gehören fest zu
+    einem <strong>Standort</strong> und wechseln beim Auswählen eines anderen Standorts automatisch mit
+    &ndash; inklusive Polardiagramm und aller Bahnen. Über die Kacheln oben lässt sich zwischen allen
+    angelegten Standorten wechseln (der aktive Standort ist blau hervorgehoben); „+ Neuer Standort“
+    öffnet ein Fenster zum Anlegen, „Bearbeiten“ das gleiche Fenster für den aktuell gewählten
+    Standort, „Löschen“ entfernt ihn (mindestens ein Standort
+    bleibt immer bestehen). Standorte werden im Browser gespeichert und bleiben so über einen Neustart
+    des Tools hinweg erhalten; „Standorte exportieren“/„Standorte importieren“ sichern sie zusätzlich als
+    JSON-Datei, z.&nbsp;B. um sie auf einen anderen Rechner zu übertragen. Je Standort sind maximal 30
+    Stützpunkte pro Grenze (unten/oben) möglich, um Diagramm und Tabelle übersichtlich zu halten.
+    Ein Wechsel des Standorts leert die aktuelle Ergebnistabelle (die Daten galten für den vorherigen
+    Standort) &ndash; „Daten laden“/„Neu berechnen“ bzw. „Deep-Sky-Objekte berechnen“ danach erneut
+    anklicken.
+  </p>
+  <p>
+    Stützpunkte lassen sich im Standort-Fenster wie gewohnt von Hand eintragen, oder über „Vermessen“
+    per Handykamera einmessen: Das Tool zeigt das Kamerabild mit Fadenkreuz und berechnet
+    aus Kompass (Azimuth) und Neigungssensor (Höhenwinkel) des Handys live die Blickrichtung. Auf ein
+    Hindernis peilen, „Punkt speichern“ antippen, beliebig viele Punkte sammeln, dann „Übernehmen &amp;
+    schließen“ &ndash; die vermessenen Punkte landen automatisch als neue Zeilen in der gerade
+    bearbeiteten Tabelle (unten oder oben, je nachdem welcher „Vermessen“-Button genutzt wurde)
+    und lassen sich dort vor dem Speichern noch prüfen oder löschen. Wichtig: Kamera und Sensoren
+    funktionieren aus Sicherheitsgründen nur, wenn Skytracker selbst über HTTPS oder
+    <code>http://localhost</code> aufgerufen wird &ndash; beim GitHub-Pages-Link und beim Start über
+    „Transit-Planer starten.command“ (startet einen lokalen Server) ist das der Fall, bei einer per
+    Doppelklick direkt geöffneten Datei (<code>file://…</code>) dagegen nicht (die Schaltfläche zeigt
+    dann eine entsprechende Fehlermeldung statt eines Kamerabilds). Die Kompasswerte stammen vom
+    Magnetometer/Gyroskop des Handys und sind keine Präzisionsmessung &ndash; bei Abweichungen hilft es,
+    das Handy einmal in einer liegenden Acht zu bewegen (Kompass-Kalibrierung).
+  </p>
+  <p>
+    Azimut-Start/-Ende sind die harte seitliche Begrenzung (außerhalb gilt der Himmel als nicht einsehbar);
+    für uneingeschränkte Rundumsicht 0&deg;/360&deg; eintragen. Dazwischen definieren zwei unabhängige
+    Stützpunkt-Profile den nutzbaren Himmelsausschnitt: die <strong>untere Grenze</strong> (Mindesthöhe
+    je Azimut, für Hindernisse von unten/seitlich wie Haus oder Baum &ndash; auch bei sonst freier
+    Rundumsicht, z.&nbsp;B. ein einzelnes Haus in einer Richtung) und die <strong>obere Grenze</strong>
+    (Obergrenze je Azimut, für Verdeckungen von oben, z.&nbsp;B. einen Balkon darüber). Beide werden
+    unabhängig voneinander linear zwischen ihren Punkten interpoliert; außerhalb des ersten/letzten
+    Punkts gilt dessen Wert weiter (kein Extrapolieren). Die untere Grenze darf auch negativ sein
+    (bis &minus;90&deg;) &ndash; relevant bei erhöhter Beobachtungsposition (z.&nbsp;B. Balkon über der
+    Umgebung), wenn der tatsächliche Horizont unterhalb der 0&deg;-Ebene liegt; solche Werte werden
+    unverändert übernommen, auch beim Vermessen per Kamera. Im Polardiagramm zeigt
+    die blaue Fläche den tatsächlich nutzbaren Himmelsausschnitt (Kernfläche, siehe Sicherheitspuffer
+    unten); kleine gelbe Punkte sind Stützpunkte der unteren, kleine violette Punkte der oberen Grenze.
+    Ein Klick auf eine Zeile der Ergebnistabelle zeigt deren Bahn (orange) im Diagramm; erneutes
+    Anklicken derselben Zeile, „Zurücksetzen“ oder das Anklicken einer anderen Zeile blendet die
+    Markierung wieder aus bzw. wechselt sie. Mit dem Mausrad über dem Diagramm lässt sich hinein-
+    (hoch scrollen) bzw. herauszoomen (runter scrollen), und zwar zur jeweiligen Position des
+    Mauszeigers hin (wie bei Karten üblich) statt starr zur Diagrammmitte; ein Doppelklick auf das
+    Diagramm setzt den Zoom zurück.
+  </p>
+  <p>
+    <strong>Sicherheitspuffer (5&deg;):</strong> Die Stützpunkte selbst sind exakt gemessen, aber
+    zwischen ihnen wird weiterhin linear interpoliert &ndash; die tatsächliche Verdeckung kann davon
+    leicht abweichen. Damit dadurch keine knapp daneben liegenden, potenziell noch beobachtbaren
+    Ereignisse von vornherein aus der Ergebnisliste fallen, wird der aus den Stützpunkten berechnete
+    nutzbare Bereich an beiden Rändern (unten wie oben) um je 5&deg; nach <strong>außen</strong>
+    erweitert; diese erweiterten Grenzen entscheiden, was in der Ergebnistabelle erscheint. Im
+    Polardiagramm ist die Erweiterung als gestrichelter, gelblich eingefärbter Ring um die eigentliche
+    (blaue) Kernfläche erkennbar &ndash; Ereignisse nahe an oder in diesem Ring liegen näher am
+    Rand des tatsächlich vermessenen Bereichs und sollten vor Ort mit etwas mehr Vorsicht behandelt
+    werden als Ereignisse mitten in der blauen Kernfläche. Hintergrund: Bei der Aufnahme von M101 im
+    Juli 2026 traten Bildartefakte auf, weil die damalige Interpolation zwischen zwei Stützpunkten das
+    Objekt an dieser Position noch knapp als frei einstufte &ndash; der fehlende Stützpunkt wurde
+    daraufhin ergänzt (siehe oben); der Puffer macht zusätzlich sichtbar, wie nah ein Ereignis am Rand
+    des vermessenen Bereichs liegt, statt es entweder blind zu vertrauen oder es kommentarlos
+    auszublenden.
+  </p>
+
+  <h2>2. Zeitraum &amp; Dunkelheit</h2>
+  <p>
+    Start-Datum und Anzahl Nächte grenzen den Suchzeitraum ein. Ein Transit wird nur akzeptiert, wenn das
+    gesamte Beobachtungsfenster unterhalb der gewählten Dämmerungsgrenze liegt (vereinfachte Sonnenposition,
+    für Dämmerungszeiten ausreichend genau). Mondlicht wird nicht berücksichtigt.
+  </p>
+
+  <h2>3. Zielauswahl: Exoplaneten vs. Deep-Sky</h2>
+  <p>
+    Der Umschalter oben im Tool wechselt zwischen zwei komplett getrennten Zielauswahl-Abschnitten mit
+    jeweils eigenen Filtern und einer eigenen Ergebnistabelle (Abschnitte 1 und 2 bleiben in beiden Modi
+    gleich). Welcher Modus gerade aktiv ist, erkennt man am hervorgehobenen Umschalter-Knopf.
+  </p>
+  <h3>Exoplaneten</h3>
+  <p>
+    Die Grenzwerte für Wirtsstern-Helligkeit und Transittiefe sind Faustregeln aus Erfahrungsberichten der
+    Amateur-Exoplaneten-Photometrie mit kleinen Öffnungen, keine physikalische Garantie &ndash; frei an die
+    eigene Ausrüstung anpassbar. <strong>Max. Belichtungsfenster</strong> begrenzt, wie lange am Stück
+    beobachtet werden kann: Passt der Kern-Transit selbst nicht hinein, entfällt das Ereignis; ist nur der
+    gewünschte Rand zu lang, wird dieser automatisch gekürzt. „Rand vor/nach Transit“ ist die gewünschte
+    photometrische Basislinie außerhalb des eigentlichen Transits. Die Knöpfe „Daten laden“/„Neu berechnen“
+    sowie der Lade-Status liegen am Ende dieses Abschnitts.
+  </p>
+  <h3>Deep-Sky-Objekte</h3>
+  <p>
+    Anders als Exoplaneten-Transits sind Deep-Sky-Objekte ortsfest &ndash; sie ziehen jede Nacht dieselbe
+    Bahn über den Himmel. Für jede Nacht im gewählten Zeitraum prüft das Tool daher, ob und wie lange das
+    Objekt zusammenhängend gleichzeitig im Sichtfenster (dieselbe Geometrie wie bei Exoplaneten) und am
+    dunklen Himmel steht; „beobachtbar in X von Y Nächten“ zählt diese Nächte, „beste Nacht“ zeigt die mit
+    dem längsten Fenster. Max. Helligkeit und Min. Größe filtern nach Faustwerten für 72&nbsp;mm Öffnung
+    &ndash; sehr kleine oder lichtschwache Objekte sind damit meist kaum ein lohnendes Ziel. Die drei
+    Kategorien (Galaxien, Sternhaufen, Nebel) lassen sich einzeln abwählen; „Nur Messier-Objekte“
+    beschränkt auf die 107 im Katalog enthaltenen Messier-Objekte. Der Katalog ist fest eingebettet, daher
+    gibt es hier &ndash; anders als bei den Exoplaneten &ndash; keinen „Daten laden“-Schritt; der Knopf
+    „Deep-Sky-Objekte berechnen“ reicht.
+  </p>
+
+  <h2>Datenquelle &amp; Laden</h2>
+  <p>
+    Transit-Ephemeriden aller bekannten Exoplaneten werden live von der NASA Exoplanet Archive geladen
+    (Tabelle <code>pscomppars</code> via TAP-Dienst). Scheitert der direkte Abruf am Browser-CORS, versucht
+    das Tool automatisch mehrere öffentliche CORS-Proxys, bevor ein manueller Download-/Upload-Weg angeboten
+    wird. var.astro.cz wird aus diesem Tool heraus nicht automatisiert abgefragt &ndash; deren robots.txt
+    untersagt das für die Transit-Vorhersageseite ausdrücklich. Der Deep-Sky-Katalog ist dagegen fest im
+    Tool eingebettet (563 Objekte: alle mit Messier-Nummer oder Helligkeit heller als 10&nbsp;mag aus
+    OpenNGC, ohne Doppelsterne, Duplikate und nicht-existente Katalogeinträge) und funktioniert ohne
+    Internetverbindung.
+  </p>
+
+  <h2>Ergebnistabelle: Exoplaneten vs. Deep-Sky</h2>
+  <p>
+    Auch die Ergebnistabelle unten im Tool wechselt komplett mit dem Umschalter &ndash; beide Tabellen
+    teilen sich nur das Polardiagramm in Abschnitt 1 (Zeile anklicken zeigt dort die Bahn, siehe oben).
+  </p>
+  <h3>Exoplaneten</h3>
+  <dl>
+    <dt>Planet</dt>
+    <dd>Name des Exoplaneten, verlinkt zur var.astro.cz-Suche. Eine direkte Verlinkung auf die exakte
+      Detailseite ist nicht automatisierbar; der Planetenname muss auf der Suchseite einmal eingetippt
+      werden.</dd>
+    <dt>Sternbild</dt>
+    <dd>Näherung über den kürzesten Winkelabstand zu den ungefähren Sternbild-Mittelpunkten &ndash;
+      <strong>keine</strong> exakte Auswertung der offiziellen IAU-Grenzlinien. Bei Sternen nahe einer
+      Sternbildgrenze kann die Angabe abweichen.</dd>
+    <dt>Beobachtungsfenster</dt>
+    <dd>Start/Ende inklusive photometrischem Rand vor/nach dem Transit, in Berliner Ortszeit.</dd>
+    <dt>Status</dt>
+    <dd>"Vollständig" = gesamtes Fenster inkl. Rand im Sichtfenster und dunkel. "Rand eingeschränkt" = nur
+      der eigentliche Transit ist beobachtbar.</dd>
+    <dt>Zeile anklicken</dt>
+    <dd>Zeigt die Himmelsbahn dieses Transits im Polardiagramm unter Abschnitt 1.</dd>
+    <dt>NASA-Link</dt>
+    <dd>Führt zur Systemübersicht des <em>Wirtssterns</em> auf der NASA Exoplanet Archive &ndash; pro
+      Stern(system), nicht pro Einzelplanet.</dd>
+    <dt>Stellarium-Link</dt>
+    <dd>Zentriert die Ansicht der lokal laufenden Stellarium-App (Remote-Control-Plug-in) direkt auf die
+      <strong>Koordinaten des Wirtssterns</strong> (nicht per Namenssuche &ndash; funktioniert daher auch bei
+      Sternen außerhalb von Stellariums Standard-Katalog), setzt dort ein gelbes Kreuz als Markierung und
+      stellt die Simulationszeit auf den Fensterbeginn. Da der Transit unmittelbar vor dem Stern stattfindet,
+      ist dessen Position zugleich die Planetenposition. Nötige Stellarium-Einstellung: Configuration Window
+      &rarr; Plugins &rarr; Remote Control &rarr; Configure &rarr; <strong>„Server enabled“</strong> muss
+      angehakt sein. „Enable CORS for the following“ wird <strong>nicht</strong> benötigt, da alle Befehle im
+      <code>no-cors</code>-Modus gesendet werden. Erfolg/Misserfolg der drei Teilbefehle (Zeit, Ansicht,
+      Markierung) wird einzeln als Meldung angezeigt.</dd>
+  </dl>
+
+  <h3>Deep-Sky-Objekte</h3>
+  <dl>
+    <dt>Objekt</dt>
+    <dd>Messier-Nummer, falls vorhanden, sonst NGC/IC-Katalogname; gebräuchlicher Name (falls bekannt) in
+      Klammern.</dd>
+    <dt>Sternbild</dt>
+    <dd>Ausgeschrieben, direkt aus dem Katalog übernommen &ndash; im Gegensatz zur Positions-Näherung bei
+      den Exoplaneten. Serpens wird als „Serpens (Caput)“ bzw. „Serpens (Cauda)“ unterschieden, da der
+      Katalog diese beiden Teile getrennt führt.</dd>
+    <dt>Beobachtbar</dt>
+    <dd>Anzahl Nächte im gewählten Zeitraum, in denen das Objekt mindestens 10&nbsp;Minuten zusammenhängend
+      im Sichtfenster und am dunklen Himmel stand.</dd>
+    <dt>Max. Zeit im Fenster</dt>
+    <dd>Länge des längsten zusammenhängenden Sichtbarkeitsfensters in der besten Nacht.</dd>
+    <dt>Beste Nacht</dt>
+    <dd>Die Nacht mit dem längsten zusammenhängenden Sichtbarkeitsfenster; wird auch für die Bahn-Anzeige im
+      Polardiagramm verwendet.</dd>
+  </dl>
+
+  <h2>Methodik &amp; Einschränkungen</h2>
+  <p>
+    Transitzeitpunkte werden aus <code>pl_tranmid</code> und <code>pl_orbper</code> der NASA Exoplanet Archive
+    linear fortgeschrieben; die als BJD_TDB angegebene Referenzzeit wird ohne Lichtlaufzeit-Korrektur wie UTC
+    behandelt (Abweichung bis ca. &plusmn;9&nbsp;Minuten, bei veralteter Ephemeride ggf. deutlich mehr). Jedes
+    Ereignis sollte daher kurz vor der Beobachtung gegengeprüft werden (var.astro.cz, ETD). Sichtbarkeit wird
+    über Standard-Formeln für Stundenwinkel/Höhe/Azimut und eine vereinfachte Sonnenposition berechnet;
+    Mondphase/-abstand wird nicht berücksichtigt.
+  </p>
+
+  <h2>Quellen</h2>
+  <p>
+    Ephemeriden: <a href="https://exoplanetarchive.ipac.caltech.edu/" target="_blank">NASA Exoplanet Archive</a>,
+    Tabelle <code>pscomppars</code>. Cross-Check:
+    <a href="https://var.astro.cz/en/Exoplanets" target="_blank">var.astro.cz Exoplanet Transit Database</a>.
+    Deep-Sky-Katalog: <a href="https://github.com/mattiaverga/OpenNGC" target="_blank">OpenNGC</a>
+    (CC-BY-SA-4.0). Stellarium Remote-Control-API:
+    <a href="https://stellarium.org/doc/23.0/remoteControlApi.html" target="_blank">stellarium.org Dokumentation</a>.
+  </p>
+</div>
+
+<div id="compassTooltip"></div>
+<div id="toast" class="toast"></div>
+
+<dialog id="locationModal" style="background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); max-width:640px; width:100%; max-height:90vh; overflow:auto; padding:22px 24px; color:var(--text);">
+  <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px;">
+    <h2 id="locationModalTitle" style="margin-top:0;">Neuer Standort</h2>
+    <button type="button" id="locCloseXBtn" class="secondary" aria-label="Schließen" title="Schließen (wie Abbrechen)" style="padding:2px 11px; font-size:1.05rem; line-height:1.3; border-radius:6px; margin-top:-2px;">&times;</button>
+  </div>
+  <div class="field-row">
+    <div class="field" style="flex:1 1 100%;"><label>Name</label><input type="text" id="locName" placeholder="z.B. Bundesplatz"></div>
+  </div>
+  <div class="field-row">
+    <div class="field"><label>Breite (Lat, &deg;N)</label><input type="number" id="locLat" step="0.0001"></div>
+    <div class="field">
+      <label style="display:flex; justify-content:space-between; align-items:center;">
+        <span>Länge (Lon, &deg;O)</span>
+        <a href="https://www.gpskoordinaten.de" target="_blank" title="Aktuellen Standort als Koordinaten ermitteln (neuer Tab)" style="color:var(--accent); text-decoration:none; font-size:0.78rem;">Standort?</a>
+      </label>
+      <input type="number" id="locLon" step="0.0001">
+    </div>
+  </div>
+  <div class="field-row">
+    <div class="field"><label>Azimut-Start (&deg;)</label><input type="number" id="locAzStart" min="0" max="360"></div>
+    <div class="field"><label>Azimut-Ende (&deg;)</label><input type="number" id="locAzEnd" min="0" max="360"></div>
+  </div>
+  <p class="small" style="margin:2px 0 14px;">Für uneingeschränkte Rundumsicht: 0&deg; / 360&deg;.</p>
+
+  <p class="small" style="margin:14px 0 4px; display:flex; justify-content:space-between;"><span>Untere Grenze (Hindernisse von unten/seitlich, z.&nbsp;B. Haus, Baum)</span><span id="locHorizonCount" class="small"></span></p>
+  <table style="width:100%; border-collapse:collapse; margin-bottom:6px;">
+    <thead>
+      <tr>
+        <th style="text-align:left; font-size:0.78rem; color:var(--muted); padding:4px 4px;">Azimut (&deg;)</th>
+        <th style="text-align:left; font-size:0.78rem; color:var(--muted); padding:4px 4px;">Mindesthöhe dort (&deg;)</th>
+        <th style="text-align:left; font-size:0.78rem; color:var(--muted); padding:4px 4px;">Hindernis</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody id="locHorizonRows"></tbody>
+  </table>
+  <button type="button" id="locAddHorizonRow" class="secondary" style="padding:6px 12px; font-size:0.8rem;">+ Stützpunkt hinzufügen (unten)</button><!--
+  --><button type="button" id="locSurveyHorizonBtn" class="secondary" style="padding:6px 12px; font-size:0.8rem; margin-left:3pt;">Vermessen</button>
+
+  <p class="small" style="margin:16px 0 4px; display:flex; justify-content:space-between;"><span>Obere Grenze (Verdeckung von oben, z.&nbsp;B. Balkon darüber)</span><span id="locCeilingCount" class="small"></span></p>
+  <table style="width:100%; border-collapse:collapse; margin-bottom:6px;">
+    <thead>
+      <tr>
+        <th style="text-align:left; font-size:0.78rem; color:var(--muted); padding:4px 4px;">Azimut (&deg;)</th>
+        <th style="text-align:left; font-size:0.78rem; color:var(--muted); padding:4px 4px;">Obergrenze dort (&deg;)</th>
+        <th style="text-align:left; font-size:0.78rem; color:var(--muted); padding:4px 4px;">Hindernis</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody id="locCeilingRows"></tbody>
+  </table>
+  <button type="button" id="locAddCeilingRow" class="secondary" style="padding:6px 12px; font-size:0.8rem;">+ Stützpunkt hinzufügen (oben)</button><!--
+  --><button type="button" id="locSurveyCeilingBtn" class="secondary" style="padding:6px 12px; font-size:0.8rem; margin-left:3pt;">Vermessen</button>
+
+  <div style="display:flex; gap:8px; margin-top:22px; justify-content:flex-end;">
+    <button type="button" id="locCancelBtn" class="secondary">Abbrechen</button>
+    <button type="button" id="locSaveBtn">Speichern</button>
+  </div>
+</dialog>
+
+<!-- Kamera-Vermessung: siehe CSS-Kommentar oben bei "#cameraModal" für den Hintergrund. Läuft nur in
+     einem sicheren Kontext (HTTPS oder http://localhost) - siehe CameraSurvey-Modul im Script. -->
+<dialog id="cameraModal">
+  <video id="camVideo" autoplay playsinline muted></video>
+
+  <div id="camReadout">
+    <div id="camTargetLabel"></div>
+    <div class="cam-metrics-row">
+      <div class="cam-metric">
+        <div class="cam-label">Azimuth</div>
+        <div class="cam-value" id="camAzVal">–°</div>
+        <div class="cam-sub" id="camAzDir">–</div>
+      </div>
+      <div class="cam-metric">
+        <div class="cam-label">Höhenwinkel</div>
+        <div class="cam-value" id="camElVal">–°</div>
+        <div class="cam-sub">Horizont = 0°</div>
+      </div>
+      <button type="button" id="camCloseXBtn" aria-label="Abbrechen" title="Ohne Übernahme schließen">&times;</button>
+    </div>
+  </div>
+
+  <div id="camWarnbar"></div>
+
+  <div id="camCrosshair"><div class="cam-dot"></div></div>
+
+  <div id="camControls">
+    <div class="cam-btnrow">
+      <button type="button" id="camBtnSave" class="primary">Punkt speichern</button>
+      <button type="button" id="camBtnToggleLog">Liste (<span id="camCount">0</span>)</button>
+      <button type="button" id="camBtnClear">Leeren</button>
+    </div>
+    <div class="cam-btnrow" style="margin-top:6px;">
+      <button type="button" id="camBtnDone" class="primary">Übernehmen &amp; schließen</button>
+    </div>
+    <div id="camLog">
+      <table>
+        <thead><tr><th>#</th><th>Azimuth</th><th>Höhe</th><th></th></tr></thead>
+        <tbody id="camLogBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div id="camStartscreen">
+    <h1>Vermessen</h1>
+    <p id="camStartscreenText"></p>
+    <p>Benötigt Zugriff auf Kamera und Bewegungssensoren.</p>
+    <button type="button" class="primary" id="camBtnStart">Kamera &amp; Sensoren aktivieren</button>
+    <div id="camStartError"></div>
+    <button type="button" id="camStartCancelBtn" class="secondary">Abbrechen</button>
+  </div>
+
+  <div id="camToast"></div>
+
+  <div id="camConfirmOverlay">
+    <div id="camConfirmBox">
+      <p id="camConfirmText">Alle gespeicherten Punkte löschen?</p>
+      <div class="cam-btnrow">
+        <button type="button" id="camConfirmCancel">Abbrechen</button>
+        <button type="button" id="camConfirmOk" class="primary">Löschen</button>
+      </div>
+    </div>
+  </div>
+</dialog>
+
+<script>
+(function(){
+  "use strict";
+
+  // ---------- Seitenumschaltung Planer / Doku ----------
+  document.getElementById('showDocBtn').addEventListener('click', ()=>{
+    document.getElementById('plannerView').style.display = 'none';
+    document.getElementById('docView').style.display = 'block';
+    document.getElementById('showDocBtn').style.display = 'none';
+    window.scrollTo(0,0);
+  });
+  document.getElementById('backToPlannerBtn').addEventListener('click', ()=>{
+    document.getElementById('docView').style.display = 'none';
+    document.getElementById('plannerView').style.display = 'block';
+    document.getElementById('showDocBtn').style.display = '';
+    window.scrollTo(0,0);
+  });
+
+  function showToast(msg){
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(showToast._timer);
+    showToast._timer = setTimeout(()=>t.classList.remove('show'), 3000);
+  }
+
+  // ---------- Umschaltung Exoplaneten / Deep-Sky-Objekte ----------
+  // Abschnitt 1 (Standort & Sichtfenster) und Abschnitt 2 (Zeitraum & Dunkelheit) sowie das
+  // Polardiagramm werden von beiden Modi gemeinsam genutzt; nur Zielauswahl und Ergebnistabelle
+  // wechseln. "highlightedRow" und die zugehörige Bahn-Anzeige sind bewusst generisch gehalten
+  // (pl_name/tMid/winStart/path funktionieren für Exoplaneten- wie DSO-Zeilen gleichermaßen).
+  let currentMode = 'exo'; // 'exo' | 'dso'
+  function activeTbodyId(){ return currentMode === 'exo' ? 'resultsBody' : 'resultsBodyDso'; }
+  function activeRenderedRows(){ return currentMode === 'exo' ? currentRenderedRows : currentRenderedRowsDso; }
+
+  function setMode(mode){
+    currentMode = mode;
+    document.getElementById('modeExoBtn').classList.toggle('secondary', mode !== 'exo');
+    document.getElementById('modeDsoBtn').classList.toggle('secondary', mode !== 'dso');
+    document.getElementById('zielExoCard').style.display = mode === 'exo' ? '' : 'none';
+    document.getElementById('zielDsoCard').style.display = mode === 'dso' ? '' : 'none';
+    document.getElementById('resultsCardExo').style.display = mode === 'exo' ? '' : 'none';
+    document.getElementById('resultsCardDso').style.display = mode === 'dso' ? '' : 'none';
+    setHighlight(null);
+  }
+  document.getElementById('modeExoBtn').addEventListener('click', ()=>setMode('exo'));
+  document.getElementById('modeDsoBtn').addEventListener('click', ()=>setMode('dso'));
+
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  // ---------- Astronomie-Grundfunktionen ----------
+  const toRad = d => d*Math.PI/180;
+  const toDeg = r => r*180/Math.PI;
+  function norm360(x){ x = x % 360; if(x<0) x+=360; return x; }
+
+  function jdFromDate(dateObj){ return dateObj.getTime()/86400000 + 2440587.5; }
+  function dateFromJd(jd){ return new Date((jd-2440587.5)*86400000); }
+
+  function gmstDeg(jd){
+    const T = (jd - 2451545.0)/36525.0;
+    let g = 280.46061837 + 360.98564736629*(jd-2451545.0) + 0.000387933*T*T - (T*T*T)/38710000.0;
+    return norm360(g);
+  }
+
+  // Standard Alt/Az aus RA/Dec (Grad), Standort lat/lon (Grad, Ost positiv), Zeitpunkt jd
+  function altAz(jd, raDeg, decDeg, latDeg, lonDeg){
+    const lst = norm360(gmstDeg(jd) + lonDeg);
+    const H = norm360(lst - raDeg);
+    const Hr = toRad(H), latR = toRad(latDeg), decR = toRad(decDeg);
+    const sinAlt = Math.sin(decR)*Math.sin(latR) + Math.cos(decR)*Math.cos(latR)*Math.cos(Hr);
+    const alt = toDeg(Math.asin(Math.max(-1, Math.min(1, sinAlt))));
+    const y = Math.sin(Hr);
+    const x = Math.cos(Hr)*Math.sin(latR) - Math.tan(decR)*Math.cos(latR);
+    let A = toDeg(Math.atan2(y, x)); // von Süden aus, westwärts positiv (Meeus)
+    let az = norm360(A + 180); // auf "von Norden, im Uhrzeigersinn" umrechnen
+    return {alt, az};
+  }
+
+  // Grob genäherte Sonnenposition (Genauigkeit ausreichend für Dämmerungszeiten)
+  function sunEquatorial(jd){
+    const n = jd - 2451545.0;
+    const L = norm360(280.460 + 0.9856474*n);
+    const g = norm360(357.528 + 0.9856003*n);
+    const gR = toRad(g);
+    let lam = norm360(L + 1.915*Math.sin(gR) + 0.020*Math.sin(2*gR));
+    const eps = 23.439 - 0.0000004*n;
+    const lamR = toRad(lam), epsR = toRad(eps);
+    let ra = norm360(toDeg(Math.atan2(Math.cos(epsR)*Math.sin(lamR), Math.cos(lamR))));
+    const dec = toDeg(Math.asin(Math.sin(epsR)*Math.sin(lamR)));
+    return {ra, dec};
+  }
+  function sunAltitude(jd, latDeg, lonDeg){
+    const s = sunEquatorial(jd);
+    return altAz(jd, s.ra, s.dec, latDeg, lonDeg).alt;
+  }
+
+  // ---------- Sternbild-Näherung (nächster Sternbild-Mittelpunkt, KEINE exakten IAU-Grenzen) ----------
+  const CONSTELLATIONS = [
+    ['Andromeda','And',1.0,40],['Antlia','Ant',10.0,-35],['Apus','Aps',16.0,-75],['Aquarius','Aqr',22.5,-10],
+    ['Aquila','Aql',19.7,3],['Ara','Ara',17.4,-55],['Aries','Ari',2.6,20],['Auriga','Aur',6.0,42],
+    ['Boötes','Boo',14.7,31],['Caelum','Cae',4.7,-37],['Camelopardalis','Cam',6.0,70],['Cancer','Cnc',8.6,20],
+    ['Canes Venatici','CVn',13.1,40],['Canis Major','CMa',6.8,-22],['Canis Minor','CMi',7.6,6],
+    ['Capricornus','Cap',21.0,-18],['Carina','Car',8.7,-63],['Cassiopeia','Cas',1.0,62],
+    ['Centaurus','Cen',13.0,-47],['Cepheus','Cep',2.5,71],['Cetus','Cet',1.7,-8],['Chamaeleon','Cha',10.7,-79],
+    ['Circinus','Cir',14.6,-63],['Columba','Col',5.8,-35],['Coma Berenices','Com',12.8,23],
+    ['Corona Australis','CrA',18.6,-41],['Corona Borealis','CrB',15.8,32],['Corvus','Crv',12.4,-18],
+    ['Crater','Crt',11.4,-16],['Crux','Cru',12.4,-60],['Cygnus','Cyg',20.6,42],['Delphinus','Del',20.7,12],
+    ['Dorado','Dor',5.2,-60],['Draco','Dra',17.0,65],['Equuleus','Equ',21.2,8],['Eridanus','Eri',3.3,-29],
+    ['Fornax','For',2.8,-32],['Gemini','Gem',7.1,23],['Grus','Gru',22.5,-46],['Hercules','Her',17.4,27],
+    ['Horologium','Hor',3.3,-53],['Hydra','Hya',11.6,-14],['Hydrus','Hyi',2.3,-70],['Indus','Ind',21.5,-59],
+    ['Lacerta','Lac',22.5,46],['Leo','Leo',10.7,13],['Leo Minor','LMi',10.2,33],['Lepus','Lep',5.6,-19],
+    ['Libra','Lib',15.2,-15],['Lupus','Lup',15.3,-42],['Lynx','Lyn',8.0,47],['Lyra','Lyr',18.9,37],
+    ['Mensa','Men',5.5,-77],['Microscopium','Mic',21.0,-36],['Monoceros','Mon',7.1,-4],['Musca','Mus',12.6,-70],
+    ['Norma','Nor',16.0,-52],['Octans','Oct',22.0,-85],['Ophiuchus','Oph',17.4,-8],['Orion','Ori',5.6,5],
+    ['Pavo','Pav',19.6,-66],['Pegasus','Peg',22.7,19],['Perseus','Per',3.2,45],['Phoenix','Phe',0.9,-48],
+    ['Pictor','Pic',5.7,-53],['Pisces','Psc',0.5,13],['Piscis Austrinus','PsA',22.3,-30],['Puppis','Pup',7.3,-31],
+    ['Pyxis','Pyx',8.9,-27],['Reticulum','Ret',3.9,-60],['Sagitta','Sge',19.7,19],['Sagittarius','Sgr',19.1,-25],
+    ['Scorpius','Sco',16.9,-30],['Sculptor','Scl',0.4,-32],['Scutum','Sct',18.7,-10],['Serpens','Ser',16.9,6],
+    ['Sextans','Sex',10.3,-3],['Taurus','Tau',4.7,14],['Telescopium','Tel',19.3,-51],['Triangulum','Tri',2.2,32],
+    ['Triangulum Australe','TrA',16.1,-65],['Tucana','Tuc',23.8,-65],['Ursa Major','UMa',11.3,50],
+    ['Ursa Minor','UMi',15.0,78],['Vela','Vel',9.6,-47],['Virgo','Vir',13.4,-4],['Volans','Vol',7.8,-69],
+    ['Vulpecula','Vul',20.2,24]
+  ].map(([name,abbr,raH,dec])=>({name, abbr, ra: raH*15, dec}));
+
+  // Kürzel -> ausgeschriebener Name, für die Anzeige des Sternbilds bei Deep-Sky-Objekten (deren
+  // Katalog das Sternbild direkt als Kürzel liefert, anders als bei Exoplaneten, wo es über die
+  // Positions-Näherung oben ermittelt wird). "Se1"/"Se2" sind OpenNGC-spezifische Kürzel für die
+  // beiden getrennten Teile von Serpens (Caput = Kopf, westlich; Cauda = Schwanz, östlich) und
+  // kommen in der Standard-CONSTELLATIONS-Liste oben nicht vor.
+  const CONSTELLATION_BY_ABBR = {};
+  CONSTELLATIONS.forEach(c=>{ CONSTELLATION_BY_ABBR[c.abbr] = c.name; });
+  CONSTELLATION_BY_ABBR['Se1'] = 'Serpens (Caput)';
+  CONSTELLATION_BY_ABBR['Se2'] = 'Serpens (Cauda)';
+  function constellationFullName(abbr){
+    return CONSTELLATION_BY_ABBR[abbr] || abbr;
+  }
+
+  // ---------- Deep-Sky-Objekt-Katalog (Messier + helle NGC/IC) ----------
+  // Quelle: OpenNGC (github.com/mattiaverga/OpenNGC), Lizenz CC-BY-SA-4.0. Vorgefilterte,
+  // im Tool fest eingebettete Teilmenge (kein Netzwerkzugriff nötig): alle Objekte mit
+  // Messier-Nummer ODER Helligkeit heller als 10 mag, jeweils ohne Doppelsterne, Duplikate,
+  // nicht-existente bzw. sonstige Katalogeinträge (siehe Doku für Details zur Auswahl).
+  // Format je Zeile: [Anzeigename, Typ-Code, RA(°), Dec(°), Helligkeit(mag), Größe(Bogenmin.
+  // oder null), Sternbild-Kürzel (laut Katalog, nicht die Näherung wie bei Exoplaneten),
+  // gebräuchlicher Name (oder ''), Katalog-Referenz NGC/IC (nur falls Messier-Name verwendet
+  // wird, sonst ''), ist-Messier-Objekt (bool)].
+  const DSO_CATALOG_RAW = [
+    ['M1','SNR',83.63321,22.01447,8.4,8.0,'Tau','Crab Nebula','NGC1952',true],
+    ['M2','GCl',323.36254,-0.82331,6.25,8.4,'Aqr','','NGC7089',true],
+    ['M3','GCl',205.54679,28.37544,6.39,16.2,'CVn','','NGC5272',true],
+    ['M4','GCl',245.8975,-26.52553,5.4,28.2,'Sco','','NGC6121',true],
+    ['M5','GCl',229.64063,2.08269,5.95,15.0,'Se1','','NGC5904',true],
+    ['M6','OCl',265.08646,-32.25417,4.2,15.6,'Sco','Butterfly Cluster','NGC6405',true],
+    ['M7','OCl',268.46325,-34.79283,3.3,22.2,'Sco','Ptolemy\'s Cluster','NGC6475',true],
+    ['M8','Neb',270.92196,-24.38017,5.8,45.0,'Sgr','Lagoon Nebula','NGC6523',true],
+    ['M9','GCl',259.79908,-18.51625,8.42,6.9,'Oph','','NGC6333',true],
+    ['M10','GCl',254.28746,-4.09933,4.98,9.3,'Oph','','NGC6254',true],
+    ['M11','OCl',282.77496,-6.27003,5.8,9.0,'Sct','Amas de l\'Ecu de Sobieski','NGC6705',true],
+    ['M12','GCl',251.8105,-1.94783,6.07,11.1,'Oph','','NGC6218',true],
+    ['M13','GCl',250.42346,36.46131,5.8,16.5,'Her','Hercules Globular Cluster','NGC6205',true],
+    ['M14','GCl',264.40067,-3.24592,5.73,9.9,'Oph','','NGC6402',true],
+    ['M15','GCl',322.49325,12.16683,6.3,11.1,'Peg','','NGC7078',true],
+    ['M16','Neb',274.70071,-13.80722,6.0,120.0,'Se2','Eagle Nebula','NGC6611',true],
+    ['M17','Neb',275.19629,-16.17153,7.0,12.6,'Sgr','Checkmark Nebula','NGC6618',true],
+    ['M18','OCl',274.99371,-17.10197,6.9,6.0,'Sgr','','NGC6613',true],
+    ['M19','GCl',255.657,-26.26794,5.57,7.5,'Oph','','NGC6273',true],
+    ['M20','Neb',270.67546,-22.97189,8.5,28.0,'Sgr','Trifid Nebula','NGC6514',true],
+    ['M21','OCl',271.05604,-22.49006,5.9,6.0,'Sgr','','NGC6531',true],
+    ['M22','GCl',279.10083,-23.90342,6.17,12.6,'Sgr','','NGC6656',true],
+    ['M23','OCl',269.26988,-18.98533,5.5,16.8,'Sgr','','NGC6494',true],
+    ['M24','*Ass',274.23383,-18.51456,4.5,120.0,'Sgr','Small Sgr Star Cloud','IC4715',true],
+    ['M25','OCl',277.94488,-19.11494,4.6,14.1,'Sgr','','IC4725',true],
+    ['M26','OCl',281.32775,-9.38361,8.87,6.0,'Sct','','NGC6694',true],
+    ['M27','PN',299.90158,22.72103,7.4,6.7,'Vul','Dumbbell Nebula','NGC6853',true],
+    ['M28','GCl',276.13704,-24.86983,6.9,5.1,'Sgr','','NGC6626',true],
+    ['M29','OCl',305.99071,38.50767,6.6,3.6,'Cyg','','NGC6913',true],
+    ['M30','GCl',325.09175,-23.17908,7.1,9.0,'Cap','','NGC7099',true],
+    ['M31','G',10.68479,41.26906,3.44,177.83,'And','Andromeda Galaxy','NGC0224',true],
+    ['M32','G',10.67429,40.86528,8.13,7.74,'And','','NGC0221',true],
+    ['M33','G',23.46204,30.66022,5.79,62.09,'Tri','Triangulum Galaxy','NGC0598',true],
+    ['M34','OCl',40.53083,42.74614,5.2,22.5,'Per','','NGC1039',true],
+    ['M35','OCl',92.27108,24.33864,5.1,24.0,'Gem','','NGC2168',true],
+    ['M36','OCl',84.07392,34.14075,6.0,7.2,'Aur','','NGC1960',true],
+    ['M37','OCl',88.07646,32.553,5.6,11.4,'Aur','','NGC2099',true],
+    ['M38','OCl',82.17704,35.85492,6.4,9.6,'Aur','','NGC1912',true],
+    ['M39','OCl',322.95133,48.43817,4.6,19.5,'Cyg','','NGC7092',true],
+    ['M41','OCl',101.49975,-20.75422,4.5,12.0,'CMa','','NGC2287',true],
+    ['M42','Cl+N',83.81867,-5.38967,4.0,90.0,'Ori','Great Orion Nebula','NGC1976',true],
+    ['M43','HII',83.88075,-5.26747,9.0,20.0,'Ori','Mairan\'s Nebula','NGC1982',true],
+    ['M44','OCl',130.0925,19.67206,3.1,108.6,'Cnc','Beehive','NGC2632',true],
+    ['M45','OCl',56.86917,24.10528,1.2,150.0,'Tau','Pleiades','Mel022',true],
+    ['M46','OCl',115.44508,-14.81,6.1,21.0,'Pup','','NGC2437',true],
+    ['M47','OCl',114.14592,-14.48261,4.4,19.8,'Pup','','NGC2422',true],
+    ['M48','OCl',123.42992,-5.75044,5.8,28.2,'Hya','','NGC2548',true],
+    ['M49','G',187.44483,8.00047,8.28,10.21,'Vir','','NGC4472',true],
+    ['M50','OCl',105.66863,-8.36403,5.9,14.1,'Mon','','NGC2323',true],
+    ['M51','G',202.46962,47.19517,8.36,13.71,'CVn','Whirlpool Galaxy','NGC5194',true],
+    ['M52','OCl',351.20167,61.59317,6.9,9.9,'Cas','','NGC7654',true],
+    ['M53','GCl',198.23012,18.16911,7.79,9.0,'Com','','NGC5024',true],
+    ['M54','GCl',283.76363,-30.4785,7.7,5.1,'Sgr','','NGC6715',true],
+    ['M55','GCl',294.9975,-30.96208,6.49,12.0,'Sgr','','NGC6809',true],
+    ['M56','GCl',289.14796,30.1845,8.4,5.8,'Lyr','','NGC6779',true],
+    ['M57','PN',283.39587,33.02858,8.8,1.27,'Lyr','Ring Nebula','NGC6720',true],
+    ['M58','G',189.43133,11.81819,10.3,5.01,'Vir','','NGC4579',true],
+    ['M59','G',190.50933,11.64703,9.56,4.55,'Vir','','NGC4621',true],
+    ['M60','G',190.91658,11.55269,8.79,6.78,'Vir','','NGC4649',true],
+    ['M61','G',185.47875,4.47364,10.25,6.89,'Vir','','NGC4303',true],
+    ['M62','GCl',255.3025,-30.11236,7.39,7.8,'Oph','','NGC6266',true],
+    ['M63','G',198.95554,42.02928,8.61,11.83,'CVn','Sunflower Galaxy','NGC5055',true],
+    ['M64','G',194.18183,21.68297,8.52,10.52,'Com','Black Eye Galaxy','NGC4826',true],
+    ['M65','G',169.733,13.09236,9.32,7.64,'Leo','','NGC3623',true],
+    ['M66','G',170.06233,12.99153,8.92,10.28,'Leo','','NGC3627',true],
+    ['M67','OCl',132.83388,11.81194,6.9,33.0,'Cnc','','NGC2682',true],
+    ['M68','GCl',189.86671,-26.74303,7.96,6.6,'Hya','','NGC4590',true],
+    ['M69','GCl',277.84679,-32.34797,8.31,5.7,'Sgr','','NGC6637',true],
+    ['M70','GCl',280.80267,-32.29189,9.06,6.6,'Sgr','','NGC6681',true],
+    ['M71','GCl',298.44212,18.77839,6.1,6.9,'Sge','','NGC6838',true],
+    ['M72','GCl',313.36629,-12.53706,8.96,4.5,'Aqr','','NGC6981',true],
+    ['M74','G',24.17396,15.78367,9.31,9.89,'Psc','','NGC0628',true],
+    ['M75','GCl',301.52017,-21.92222,8.26,3.6,'Sgr','','NGC6864',true],
+    ['M76','PN',25.58204,51.57547,10.1,1.12,'Per','Barbell Nebula','NGC0650',true],
+    ['M77','G',40.66963,-0.01328,9.29,6.11,'Cet','','NGC1068',true],
+    ['M78','RfN',86.69092,0.07931,8.0,4.5,'Ori','','NGC2068',true],
+    ['M79','GCl',81.04413,-24.52422,8.16,7.2,'Lep','','NGC1904',true],
+    ['M80','GCl',244.26046,-22.97511,7.3,5.7,'Sco','','NGC6093',true],
+    ['M81','G',148.88821,69.06531,6.92,21.63,'UMa','Bode\'s Galaxy','NGC3031',true],
+    ['M82','G',148.96971,69.67939,8.3,10.99,'UMa','Cigar Galaxy','NGC3034',true],
+    ['M83','G',204.25396,-29.86542,7.21,13.61,'Hya','Southern Pinwheel Galaxy','NGC5236',true],
+    ['M84','G',186.26558,12.88697,9.79,7.41,'Vir','','NGC4374',true],
+    ['M85','G',186.35046,18.1915,9.05,6.95,'Com','','NGC4382',true],
+    ['M86','G',186.54892,12.94622,8.86,11.53,'Vir','','NGC4406',true],
+    ['M87','G',187.70592,12.39111,9.0,7.11,'Vir','Virgo Galaxy','NGC4486',true],
+    ['M88','G',187.9965,14.42039,10.33,8.65,'Com','','NGC4501',true],
+    ['M89','G',188.91587,12.55633,10.08,8.13,'Vir','','NGC4552',true],
+    ['M90','G',189.20746,13.16294,9.54,9.12,'Vir','','NGC4569',true],
+    ['M91','G',188.86021,14.49633,10.96,5.55,'Com','','NGC4548',true],
+    ['M92','GCl',259.28029,43.13653,6.52,14.4,'Her','','NGC6341',true],
+    ['M93','OCl',116.12179,-23.85308,6.2,15.0,'Pup','','NGC2447',true],
+    ['M94','G',192.72108,41.12044,8.24,7.74,'CVn','','NGC4736',true],
+    ['M95','G',160.99042,11.70381,9.77,7.23,'Leo','','NGC3351',true],
+    ['M96','G',161.69058,11.81994,9.21,8.26,'Leo','','NGC3368',true],
+    ['M97','PN',168.69879,55.01903,9.9,3.58,'UMa','Owl Nebula','NGC3587',true],
+    ['M98','G',183.45121,14.90033,10.84,11.04,'Com','','NGC4192',true],
+    ['M99','G',184.70667,14.4165,9.84,5.04,'Com','Coma Pinwheel','NGC4254',true],
+    ['M100','G',185.72846,15.82181,9.47,6.1,'Com','','NGC4321',true],
+    ['M101','G',210.80225,54.34894,7.9,23.99,'UMa','','NGC5457',true],
+    ['M103','OCl',23.34088,60.658,7.4,4.5,'Cas','','NGC0581',true],
+    ['M104','G',189.99762,-11.62306,8.59,8.45,'Vir','Sombrero Galaxy','NGC4594',true],
+    ['M105','G',161.95663,12.58161,9.27,4.89,'Leo','','NGC3379',true],
+    ['M106','G',184.73958,47.30397,9.29,16.98,'CVn','','NGC4258',true],
+    ['M107','GCl',248.133,-13.05364,8.85,7.8,'Oph','','NGC6171',true],
+    ['M108','G',167.87904,55.67411,10.05,3.98,'UMa','','NGC3556',true],
+    ['M109','G',179.39992,53.37453,9.88,8.07,'UMa','','NGC3992',true],
+    ['M110','G',10.092,41.68531,8.15,16.22,'And','','NGC0205',true],
+    ['Cl 399','*Ass',291.35,20.18333,3.6,70.0,'Vul','Brocchi\'s Cluster','',false],
+    ['ESO 351-030','G',15.03896,-33.70903,8.6,15.26,'Scl','Sculptor Dwarf Elliptical','',false],
+    ['ESO 356-004','G',39.99721,-34.44919,7.4,12.88,'For','Fornax Dwarf Spheroidal','',false],
+    ['ESO 56-115','G',80.89375,-69.75611,0.29,646.0,'Dor','Large Magellanic Cloud','',false],
+    ['H 20','OCl',298.275,18.33333,7.7,5.1,'Sge','','',false],
+    ['H 21','OCl',358.555,61.74,9.0,1.8,'Cas','','',false],
+    ['H 5','OCl',186.81667,-60.77833,7.1,6.0,'Cru','','',false],
+    ['IC 127','G',22.44838,-6.98006,9.2,1.69,'Cet','','',false],
+    ['IC 1284','Neb',274.41512,-19.67203,7.7,16.98,'Sgr','','',false],
+    ['IC 1287','RfN',277.85704,-10.79581,6.1,20.0,'Sct','','',false],
+    ['IC 1442','OCl',334.00554,53.99133,9.1,4.2,'Lac','','',false],
+    ['IC 1613','G',16.19912,2.11778,9.54,18.32,'Cet','','',false],
+    ['IC 1805','Cl+N',38.17296,61.45689,6.5,60.0,'Cas','','',false],
+    ['IC 1848','Cl+N',42.79413,60.40247,6.5,40.0,'Cas','','',false],
+    ['IC 2157','OCl',91.19825,24.07103,8.4,2.7,'Gem','','',false],
+    ['IC 2391','OCl',130.13283,-53.03547,2.5,29.1,'Vel','omi Vel Cluster','',false],
+    ['IC 2395','OCl',130.62546,-48.15056,4.6,6.0,'Vel','','',false],
+    ['IC 2488','OCl',141.90929,-57.00694,7.4,7.2,'Vel','','',false],
+    ['IC 2581','OCl',156.87146,-57.61731,4.3,6.0,'Car','','',false],
+    ['IC 2714','OCl',169.36396,-62.72511,8.2,7.2,'Car','','',false],
+    ['IC 2944','Cl+N',173.94554,-63.01983,4.5,7.2,'Cen','lam Cen Nebula','',false],
+    ['IC 342','G',56.70208,68.09636,9.68,19.77,'Cam','','',false],
+    ['IC 418','PN',81.86746,-12.69728,9.44,0.2,'Lep','','',false],
+    ['IC 4291','OCl',204.23504,-62.09311,9.7,5.1,'Cen','','',false],
+    ['IC 444','RfN',94.64167,23.31333,7.03,8.0,'Gem','','',false],
+    ['IC 447','HII',97.75133,9.89744,7.7,25.0,'Mon','','',false],
+    ['IC 4499','GCl',225.08021,-82.2135,8.56,5.1,'Aps','','',false],
+    ['IC 4592','RfN',242.99446,-19.45467,3.9,60.0,'Sco','','',false],
+    ['IC 4604','Neb',246.37988,-23.43658,5.1,60.0,'Oph','rho Oph Nebula','',false],
+    ['IC 4605','Neb',247.552,-25.11517,4.7,30.0,'Sco','','',false],
+    ['IC 4651','OCl',261.20475,-49.93825,6.9,9.6,'Ara','','',false],
+    ['IC 4665','OCl',266.61325,5.64872,4.2,24.6,'Oph','','',false],
+    ['IC 4703','Neb',274.73425,-13.84539,6.0,5.05,'Se2','Eagle Nebula','',false],
+    ['IC 4756','OCl',279.71462,5.46217,4.6,24.0,'Se2','','',false],
+    ['IC 4996','OCl',304.13862,37.55528,7.3,6.0,'Cyg','','',false],
+    ['IC 5070','HII',312.753,44.4015,8.0,60.0,'Cyg','Pelican Nebula','',false],
+    ['IC 5146','Cl+N',328.36983,47.26692,7.2,10.0,'Cyg','Cocoon Nebula','',false],
+    ['MWSC 3171','GCl',296.31,-8.00722,7.54,5.4,'Aql','','',false],
+    ['Mel 101','OCl',160.55,-65.1,8.0,8.4,'Car','','',false],
+    ['Mel 105','OCl',169.925,-63.48333,8.5,5.4,'Car','','',false],
+    ['Mel 71','OCl',114.39,-12.055,7.1,14.4,'Pup','','',false],
+    ['NGC 1023','G',40.10004,39.06328,9.47,7.4,'Per','','',false],
+    ['NGC 1027','OCl',40.64608,61.59436,6.7,7.8,'Cas','','',false],
+    ['NGC 103','OCl',6.31833,61.32347,9.8,2.7,'Cas','','',false],
+    ['NGC 104','GCl',6.02233,-72.08144,4.09,31.8,'Tuc','47 Tuc Cluster','',false],
+    ['NGC 1097','G',41.57937,-30.27489,9.76,10.57,'For','','',false],
+    ['NGC 1245','OCl',48.67275,47.23869,8.4,11.4,'Per','','',false],
+    ['NGC 1261','GCl',48.06392,-55.21681,8.63,5.1,'Hor','','',false],
+    ['NGC 1269','G',49.32746,-41.10806,8.7,11.17,'Eri','','',false],
+    ['NGC 129','OCl',7.49246,60.21117,6.5,5.4,'Cas','','',false],
+    ['NGC 1313','G',49.56687,-66.49825,9.49,11.07,'Ret','','',false],
+    ['NGC 1316','G',50.67383,-37.20822,8.48,13.46,'For','Fornax A','',false],
+    ['NGC 133','OCl',7.82067,63.35261,9.4,2.1,'Cas','','',false],
+    ['NGC 1342','OCl',52.91717,37.37939,6.7,6.3,'Per','','',false],
+    ['NGC 1360','PN',53.31104,-25.87172,9.4,6.42,'For','','',false],
+    ['NGC 1380','G',54.11496,-34.97622,9.94,4.58,'For','','',false],
+    ['NGC 1395','G',54.62396,-23.02753,9.65,4.71,'Eri','','',false],
+    ['NGC 1398','G',54.71721,-26.33783,9.55,6.95,'For','','',false],
+    ['NGC 1399','G',54.62096,-35.45067,9.4,8.51,'For','','',false],
+    ['NGC 1404','G',54.71633,-35.59439,9.93,5.01,'Eri','','',false],
+    ['NGC 1407','G',55.04942,-18.58011,9.65,5.73,'Eri','','',false],
+    ['NGC 1433','G',55.50646,-47.22208,9.95,6.19,'Hor','','',false],
+    ['NGC 1444','OCl',57.37033,52.65533,6.6,3.6,'Per','','',false],
+    ['NGC 146','OCl',8.26642,63.309,9.1,3.6,'Cas','','',false],
+    ['NGC 147','G',8.3005,48.50875,9.72,9.4,'Cas','','',false],
+    ['NGC 1496','OCl',61.13287,52.66139,9.6,2.1,'Per','','',false],
+    ['NGC 1499','Neb',60.81008,36.36747,5.0,160.0,'Per','California Nebula','',false],
+    ['NGC 1502','OCl',61.95542,62.33153,6.9,10.2,'Cam','','',false],
+    ['NGC 1513','OCl',62.47792,49.51728,8.4,5.1,'Per','','',false],
+    ['NGC 1528','OCl',63.82863,51.21147,6.4,9.6,'Per','','',false],
+    ['NGC 1535','PN',63.56571,-12.73939,9.6,0.85,'Eri','','',false],
+    ['NGC 1545','OCl',65.23442,50.25533,6.2,4.2,'Per','','',false],
+    ['NGC 1549','G',63.93804,-55.59225,9.75,5.09,'Dor','','',false],
+    ['NGC 1553','G',64.04362,-55.78014,9.31,6.25,'Dor','','',false],
+    ['NGC 1555','RfN',65.49762,19.53517,9.98,1.82,'Tau','Hind\'s Nebula','',false],
+    ['NGC 1566','G',65.00175,-54.93781,9.73,7.23,'Dor','','',false],
+    ['NGC 1582','OCl',67.94496,43.78483,7.0,7.8,'Per','','',false],
+    ['NGC 1647','OCl',71.48154,19.09511,6.4,27.0,'Tau','','',false],
+    ['NGC 1662','OCl',72.12062,10.93039,6.4,13.8,'Ori','','',false],
+    ['NGC 1664','OCl',72.77263,43.67617,7.6,11.4,'Aur','','',false],
+    ['NGC 1746','OCl',75.95913,23.76764,6.1,18.0,'Tau','','',false],
+    ['NGC 1747','OCl',73.79575,-67.16889,9.37,4.4,'Dor','','',false],
+    ['NGC 1755','GCl',73.81196,-68.20406,9.85,2.2,'Dor','','',false],
+    ['NGC 1761','*Ass',74.15721,-66.47886,9.94,4.2,'Dor','','',false],
+    ['NGC 1763','Cl+N',74.20496,-66.40908,9.4,5.2,'Dor','','',false],
+    ['NGC 1778','OCl',77.02375,37.02283,7.7,4.5,'Aur','','',false],
+    ['NGC 1788','RfN',76.72175,-3.34097,5.8,2.0,'Ori','','',false],
+    ['NGC 1807','OCl',77.68762,16.51275,7.0,5.4,'Tau','','',false],
+    ['NGC 1817','OCl',78.10946,16.68408,7.7,9.3,'Tau','','',false],
+    ['NGC 1818','GCl',76.0615,-66.4345,9.7,3.1,'Dor','','',false],
+    ['NGC 1848','OCl',76.86317,-71.19536,9.73,2.2,'Men','','',false],
+    ['NGC 185','G',9.74154,48.33739,9.2,12.94,'Cas','','',false],
+    ['NGC 1850','GCl',77.18638,-68.76167,8.96,3.0,'Dor','','',false],
+    ['NGC 1851','GCl',78.52804,-40.04661,7.23,9.0,'Col','','',false],
+    ['NGC 1857','OCl',80.02317,39.34361,7.0,4.5,'Aur','','',false],
+    ['NGC 1858','Cl+N',77.46642,-68.89125,9.88,4.4,'Dor','','',false],
+    ['NGC 1866','GCl',78.41292,-65.46558,9.73,5.5,'Dor','','',false],
+    ['NGC 188','OCl',11.86471,85.26964,8.1,17.7,'Cep','','',false],
+    ['NGC 189','OCl',9.89875,61.09447,8.8,2.7,'Cas','','',false],
+    ['NGC 1893','OCl',80.68392,33.41203,7.5,6.0,'Aur','','',false],
+    ['NGC 1907','OCl',82.01896,35.32567,8.2,5.4,'Aur','','',false],
+    ['NGC 1910','Cl+N',79.67946,-69.23192,9.65,3.6,'Dor','','',false],
+    ['NGC 1955','HII',81.5415,-67.49739,8.87,4.0,'Dor','','',false],
+    ['NGC 1968','*Ass',81.84212,-67.46383,8.22,5.0,'Dor','','',false],
+    ['NGC 1973','Neb',83.76992,-4.73178,7.0,5.0,'Ori','','',false],
+    ['NGC 1975','Neb',83.8245,-4.68522,7.0,10.0,'Ori','','',false],
+    ['NGC 1980','Cl+N',83.85829,-5.90989,2.5,9.3,'Ori','Lower Sword','',false],
+    ['NGC 1981','Cl+N',83.78996,-4.42506,4.2,9.0,'Ori','Upper Sword','',false],
+    ['NGC 1984','OCl',81.92046,-69.13433,9.99,1.5,'Dor','','',false],
+    ['NGC 1999','RfN',84.10563,-6.71586,9.5,2.0,'Ori','','',false],
+    ['NGC 2004','GCl',82.67812,-67.28644,9.6,3.0,'Dor','','',false],
+    ['NGC 2014','Neb',83.08279,-67.68983,8.97,5.1,'Dor','','',false],
+    ['NGC 2042','OCl',84.03992,-68.92344,9.58,4.5,'Dor','','',false],
+    ['NGC 2050','*Ass',84.16175,-69.38353,9.25,3.0,'Dor','','',false],
+    ['NGC 2055','*Ass',84.18637,-69.49864,8.39,1.9,'Dor','','',false],
+    ['NGC 2060','SNR',84.44542,-69.17167,9.59,2.2,'Dor','','',false],
+    ['NGC 2070','HII',84.6765,-69.10089,7.25,16.0,'Dor','30 Dor Cluster','',false],
+    ['NGC 2071','Cl+N',86.78025,0.29425,8.0,7.0,'Ori','','',false],
+    ['NGC 2074','Cl+N',84.76492,-69.49811,8.5,4.0,'Dor','','',false],
+    ['NGC 2100','GCl',85.53779,-69.21183,9.6,2.5,'Dor','','',false],
+    ['NGC 2112','OCl',88.43837,0.41081,9.1,21.0,'Ori','','',false],
+    ['NGC 2129','OCl',90.27725,23.32217,6.7,3.9,'Gem','','',false],
+    ['NGC 2141','OCl',90.72942,10.44647,9.4,5.4,'Ori','','',false],
+    ['NGC 2158','OCl',91.85671,24.09617,8.6,8.4,'Gem','','',false],
+    ['NGC 2169','OCl',92.10146,13.96486,5.9,7.2,'Ori','','',false],
+    ['NGC 2175','Cl+N',92.41479,20.48758,6.8,5.4,'Ori','','',false],
+    ['NGC 2180','OCl',92.40104,4.71161,9.0,4.2,'Ori','','',false],
+    ['NGC 2182','RfN',92.37896,-6.32644,9.0,3.0,'Mon','','',false],
+    ['NGC 2186','OCl',93.02971,5.45858,8.7,4.2,'Ori','','',false],
+    ['NGC 2194','OCl',93.44129,12.80667,8.5,8.7,'Ori','','',false],
+    ['NGC 2204','OCl',93.88425,-18.66586,8.6,6.3,'CMa','','',false],
+    ['NGC 2215','OCl',95.20521,-7.28378,8.45,8.4,'Mon','','',false],
+    ['NGC 2232','OCl',97.00471,-4.84744,3.9,9.9,'Mon','','',false],
+    ['NGC 2236','OCl',97.41542,6.83069,8.5,5.4,'Mon','','',false],
+    ['NGC 2238','HII',97.66821,5.01306,6.0,80.0,'Mon','Rosette Nebula','',false],
+    ['NGC 2239','Cl+N',97.9815,4.94294,4.8,9.3,'Mon','','',false],
+    ['NGC 2243','OCl',97.39367,-31.28133,9.4,5.1,'CMa','','',false],
+    ['NGC 2247','RfN',98.27167,10.32225,8.5,2.0,'Mon','','',false],
+    ['NGC 225','OCl',10.90158,61.76694,7.0,4.2,'Cas','','',false],
+    ['NGC 2250','OCl',98.45783,-5.08444,8.9,5.1,'Mon','','',false],
+    ['NGC 2251','OCl',98.66033,8.36639,7.3,5.7,'Mon','','',false],
+    ['NGC 2252','OCl',98.67904,5.36625,7.7,6.6,'Mon','','',false],
+    ['NGC 2254','OCl',98.95692,7.67328,9.1,4.2,'Mon','','',false],
+    ['NGC 2264','Cl+N',100.24271,9.89547,3.9,11.4,'Mon','Christmas Tree Cluster','',false],
+    ['NGC 2266','OCl',100.83004,26.96956,9.5,4.2,'Gem','','',false],
+    ['NGC 2281','OCl',102.07433,41.07886,5.4,10.8,'Aur','','',false],
+    ['NGC 2286','OCl',101.91737,-3.14767,7.5,5.4,'Mon','','',false],
+    ['NGC 2298','GCl',102.24667,-36.00531,8.89,4.8,'Pup','','',false],
+    ['NGC 2299','OCl',102.97367,-7.08272,8.9,4.8,'Mon','','',false],
+    ['NGC 2301','OCl',102.93875,0.45919,6.0,10.2,'Mon','Great Bird Cluster','',false],
+    ['NGC 2311','OCl',104.44813,-4.61133,9.6,6.0,'Mon','','',false],
+    ['NGC 2324','OCl',106.03317,1.04461,8.4,8.7,'Mon','','',false],
+    ['NGC 2331','OCl',106.74929,27.26158,8.5,4.8,'Gem','','',false],
+    ['NGC 2335','OCl',106.70604,-10.02864,7.2,8.7,'Mon','','',false],
+    ['NGC 2343','OCl',107.02833,-10.61681,6.7,7.5,'Mon','','',false],
+    ['NGC 2345','OCl',107.07829,-13.19375,7.7,6.9,'CMa','','',false],
+    ['NGC 2353','OCl',108.62629,-10.26586,7.1,6.6,'Mon','','',false],
+    ['NGC 2354','OCl',108.52196,-25.68892,6.5,4.8,'CMa','','',false],
+    ['NGC 2355','OCl',109.24692,13.74986,9.7,6.0,'Gem','','',false],
+    ['NGC 2360','OCl',109.42967,-15.64131,7.2,9.0,'CMa','Caroline\'s Cluster','',false],
+    ['NGC 2362','OCl',109.67279,-24.95419,4.1,7.2,'CMa','','',false],
+    ['NGC 2367','OCl',110.01892,-21.88408,7.9,5.4,'CMa','','',false],
+    ['NGC 2374','OCl',110.98363,-13.26336,8.0,9.0,'CMa','','',false],
+    ['NGC 2383','OCl',111.16625,-20.94764,8.4,4.2,'CMa','','',false],
+    ['NGC 2384','OCl',111.29096,-21.01986,7.4,4.8,'CMa','','',false],
+    ['NGC 2392','PN',112.29483,20.91183,9.61,0.86,'Gem','Eskimo Nebula','',false],
+    ['NGC 2395','OCl',111.80354,13.60819,8.0,4.62,'Gem','','',false],
+    ['NGC 2396','OCl',112.01217,-11.71967,7.4,6.6,'Pup','','',false],
+    ['NGC 2403','G',114.21417,65.60256,8.43,19.95,'Cam','','',false],
+    ['NGC 2409','OCl',112.903,-17.19042,7.3,0.11,'Pup','','',false],
+    ['NGC 2414','OCl',113.30333,-15.45386,7.9,5.4,'Pup','','',false],
+    ['NGC 2420','OCl',114.59958,21.57408,8.3,7.5,'Gem','','',false],
+    ['NGC 2421','OCl',114.04921,-20.61225,8.3,5.1,'Pup','','',false],
+    ['NGC 2423','OCl',114.27804,-13.8715,6.7,11.7,'Pup','','',false],
+    ['NGC 2439','OCl',115.18921,-31.69242,6.9,8.7,'Pup','','',false],
+    ['NGC 2440','PN',115.48067,-18.20847,9.4,0.27,'Pup','','',false],
+    ['NGC 2451','OCl',116.31254,-37.96744,9.5,37.5,'Pup','','',false],
+    ['NGC 2453','OCl',116.89221,-27.19481,8.3,3.0,'Pup','','',false],
+    ['NGC 247','G',11.78562,-20.76039,9.21,19.68,'Cet','','',false],
+    ['NGC 2477','OCl',118.04075,-38.53325,5.8,18.6,'Pup','','',false],
+    ['NGC 2479','OCl',118.77529,-17.70781,9.6,6.3,'Pup','','',false],
+    ['NGC 2482','OCl',118.79321,-24.25464,7.3,6.6,'Pup','','',false],
+    ['NGC 2483','OCl',118.91163,-27.88683,7.6,3.3,'Pup','','',false],
+    ['NGC 2489','OCl',119.06225,-30.06083,7.9,4.2,'Pup','','',false],
+    ['NGC 2506','OCl',120.00742,-10.76964,7.6,10.8,'Mon','','',false],
+    ['NGC 2509','OCl',120.19925,-19.05053,9.3,4.8,'Pup','','',false],
+    ['NGC 2516','OCl',119.52942,-60.75347,3.8,24.3,'Car','','',false],
+    ['NGC 2520','OCl',121.24242,-28.14667,6.5,9.3,'Pup','','',false],
+    ['NGC 2533','OCl',121.76708,-29.88386,7.6,4.98,'Pup','','',false],
+    ['NGC 2539','OCl',122.65408,-12.82067,6.5,12.3,'Pup','','',false],
+    ['NGC 2546','OCl',123.06512,-37.59431,6.3,16.5,'Pup','','',false],
+    ['NGC 2547','OCl',122.53954,-49.20567,4.7,7.8,'Vel','','',false],
+    ['NGC 2567','OCl',124.64658,-30.63561,7.4,6.0,'Pup','','',false],
+    ['NGC 2571','OCl',124.73479,-29.74928,7.0,7.2,'Pup','','',false],
+    ['NGC 2580','OCl',125.36625,-30.29347,9.7,3.0,'Pup','','',false],
+    ['NGC 2587','OCl',125.85033,-29.50872,9.2,6.0,'Pup','','',false],
+    ['NGC 2627','OCl',129.31225,-29.95042,8.4,5.4,'Pyx','','',false],
+    ['NGC 2645','OCl',129.763,-46.22731,7.32,6.6,'Vel','','',false],
+    ['NGC 2658','OCl',130.86392,-32.65622,9.2,7.2,'Pyx','','',false],
+    ['NGC 2659','OCl',130.63758,-45.00053,8.6,5.1,'Vel','','',false],
+    ['NGC 2660','OCl',130.65829,-47.20067,8.8,3.6,'Vel','','',false],
+    ['NGC 2669','OCl',131.59404,-52.94753,6.1,8.4,'Vel','','',false],
+    ['NGC 2670','OCl',131.37283,-48.79164,7.8,4.2,'Vel','','',false],
+    ['NGC 2683','G',133.17221,33.42175,9.69,9.48,'Lyn','','',false],
+    ['NGC 2768','G',137.90625,60.03722,9.87,5.64,'UMa','','',false],
+    ['NGC 2808','GCl',138.01058,-64.86283,5.69,9.0,'Car','','',false],
+    ['NGC 2867','PN',140.35404,-58.31167,9.7,0.23,'Car','','',false],
+    ['NGC 288','GCl',13.19771,-26.58989,8.13,9.6,'Scl','','',false],
+    ['NGC 2903','G',143.04212,21.50083,8.91,11.94,'Leo','','',false],
+    ['NGC 2910','OCl',142.62092,-52.914,7.2,4.8,'Vel','','',false],
+    ['NGC 292','G',13.18658,-72.82861,2.3,299.92,'Tuc','Small Magellanic Cloud','',false],
+    ['NGC 2925','OCl',143.2955,-53.39597,8.3,7.5,'Vel','','',false],
+    ['NGC 2972','OCl',145.048,-50.32094,9.9,3.6,'Vel','','',false],
+    ['NGC 2997','G',146.41163,-31.19108,9.41,10.26,'Ant','','',false],
+    ['NGC 300','G',13.72283,-37.68439,8.66,19.41,'Scl','','',false],
+    ['NGC 3033','OCl',147.146,-56.43006,8.8,4.8,'Vel','','',false],
+    ['NGC 3077','G',150.82946,68.73392,9.88,5.21,'UMa','','',false],
+    ['NGC 3105','OCl',150.16467,-54.78769,9.7,4.08,'Vel','','',false],
+    ['NGC 3114','OCl',150.62321,-60.13053,4.2,12.3,'Car','','',false],
+    ['NGC 3115','G',151.30825,-7.71858,9.09,7.1,'Sex','Spindle Galaxy','',false],
+    ['NGC 3132','PN',151.75721,-40.43658,9.2,0.5,'Vel','Eight-Burst Nebula','',false],
+    ['NGC 3184','G',154.57025,41.42406,9.84,7.4,'UMa','','',false],
+    ['NGC 3201','GCl',154.40317,-46.41122,8.24,9.6,'Vel','','',false],
+    ['NGC 3228','OCl',155.34267,-51.72258,6.0,6.6,'Vel','','',false],
+    ['NGC 3242','PN',156.192,-18.64222,7.7,0.42,'Hya','Jupiter\'s Ghost Nebula','',false],
+    ['NGC 3247','HII',156.05833,-57.76333,7.6,5.0,'Car','','',false],
+    ['NGC 3293','OCl',158.95321,-58.22447,4.7,5.1,'Car','','',false],
+    ['NGC 330','OCl',14.07354,-72.46294,9.55,2.8,'Tuc','','',false],
+    ['NGC 3324','Cl+N',159.31754,-58.61956,6.7,4.8,'Car','','',false],
+    ['NGC 3330','OCl',159.68929,-54.13072,7.4,5.1,'Vel','','',false],
+    ['NGC 3344','G',160.87979,24.92222,9.98,6.7,'LMi','','',false],
+    ['NGC 3372','HII',161.28554,-59.86669,3.0,120.0,'Car','Carina Nebula','',false],
+    ['NGC 3384','G',162.07038,12.62928,9.96,5.24,'Leo','','',false],
+    ['NGC 3496','OCl',164.89087,-60.33686,8.2,6.0,'Car','','',false],
+    ['NGC 3519','OCl',166.01154,-61.36825,7.7,4.8,'Car','','',false],
+    ['NGC 3521','G',166.45242,-0.03586,9.11,8.32,'Leo','','',false],
+    ['NGC 3532','OCl',166.44925,-58.7705,3.0,12.0,'Car','Wishing Well Cluster','',false],
+    ['NGC 3572','OCl',167.58,-60.24836,6.6,4.08,'Car','','',false],
+    ['NGC 3585','G',168.32121,-26.75483,9.69,6.61,'Hya','','',false],
+    ['NGC 3590','OCl',168.24571,-60.78903,8.2,5.1,'Car','','',false],
+    ['NGC 362','GCl',15.80929,-70.84822,6.58,8.7,'Tuc','','',false],
+    ['NGC 3621','G',169.56879,-32.81406,9.55,9.79,'Hya','','',false],
+    ['NGC 3628','G',170.07071,13.58969,9.45,11.04,'Leo','','',false],
+    ['NGC 3680','OCl',171.4045,-43.25011,7.6,5.7,'Cen','','',false],
+    ['NGC 3766','OCl',174.05996,-61.60517,5.3,6.9,'Cen','Pearl Cluster','',false],
+    ['NGC 381','OCl',17.07504,61.58328,9.3,6.0,'Cas','','',false],
+    ['NGC 3918','PN',177.57479,-57.18233,8.1,0.32,'Cen','Blue Planetary','',false],
+    ['NGC 3923','G',177.75704,-28.80603,9.6,6.89,'Hya','','',false],
+    ['NGC 3960','OCl',177.63838,-55.66983,8.3,6.0,'Cen','','',false],
+    ['NGC 4052','OCl',180.52163,-63.22347,8.8,5.1,'Cru','','',false],
+    ['NGC 4103','OCl',181.66487,-61.25008,7.4,7.8,'Cru','','',false],
+    ['NGC 4125','G',182.02508,65.17414,9.71,5.87,'Dra','','',false],
+    ['NGC 4214','G',183.91321,36.32689,9.77,6.79,'CVn','','',false],
+    ['NGC 4216','G',183.97683,13.14939,9.93,7.82,'Vir','','',false],
+    ['NGC 4230','OCl',184.28904,-55.28614,9.4,5.4,'Cen','','',false],
+    ['NGC 4236','G',184.1755,69.46258,9.77,23.5,'Dra','','',false],
+    ['NGC 4337','OCl',186.01379,-58.12378,8.9,6.6,'Cru','','',false],
+    ['NGC 4349','OCl',186.02517,-61.87044,7.4,6.3,'Cru','','',false],
+    ['NGC 436','OCl',18.99075,58.81711,8.8,5.7,'Cas','','',false],
+    ['NGC 4365','G',186.11783,7.31767,9.43,5.12,'Vir','','',false],
+    ['NGC 4372','GCl',186.43908,-72.65908,9.85,12.0,'Mus','','',false],
+    ['NGC 4439','OCl',187.10979,-60.10322,8.4,4.5,'Cru','','',false],
+    ['NGC 4449','G',187.04625,44.09364,9.64,4.66,'CVn','','',false],
+    ['NGC 4463','OCl',187.48008,-64.78967,7.2,4.8,'Mus','','',false],
+    ['NGC 4490','G',187.651,41.64389,9.72,6.71,'CVn','','',false],
+    ['NGC 4494','G',187.85042,25.77525,9.8,4.35,'Com','','',false],
+    ['NGC 4526','G',188.51288,7.69953,9.59,9.64,'Vir','','',false],
+    ['NGC 4535','G',188.58463,8.19775,9.89,8.15,'Vir','','',false],
+    ['NGC 4559','G',188.99021,27.96,9.92,10.57,'Com','','',false],
+    ['NGC 457','OCl',19.88604,58.29069,6.4,7.8,'Cas','Owl Cluster','',false],
+    ['NGC 4609','OCl',190.57012,-62.99575,6.9,5.4,'Cru','Coalsack Cluster','',false],
+    ['NGC 4631','G',190.53337,32.5415,9.24,14.45,'CVn','Whale Galaxy','',false],
+    ['NGC 4636','G',190.70762,2.68778,9.99,6.35,'Vir','','',false],
+    ['NGC 4697','G',192.1495,-5.80075,9.37,7.14,'Vir','','',false],
+    ['NGC 4699','G',192.25929,-8.66486,9.53,3.99,'Vir','','',false],
+    ['NGC 4725','G',192.61075,25.50081,9.38,9.71,'Com','','',false],
+    ['NGC 4753','G',193.09213,-1.19969,9.66,6.49,'Vir','','',false],
+    ['NGC 4815','OCl',194.49321,-64.96175,8.6,3.9,'Mus','','',false],
+    ['NGC 4833','GCl',194.89558,-70.87458,7.79,8.4,'Mus','','',false],
+    ['NGC 4852','OCl',195.01829,-59.60944,8.9,5.4,'Cen','','',false],
+    ['NGC 5053','GCl',199.11246,17.69775,9.96,4.8,'Com','','',false],
+    ['NGC 5102','G',200.49004,-36.63025,9.88,9.71,'Cen','','',false],
+    ['NGC 5128','G',201.36508,-43.01911,7.22,25.88,'Cen','Centaurus A','',false],
+    ['NGC 5138','OCl',201.81337,-59.04094,5.33,4.2,'Cen','','',false],
+    ['NGC 5139','GCl',201.69121,-47.47686,5.33,27.0,'Cen','Omega Centauri','',false],
+    ['NGC 5168','OCl',202.77188,-60.93922,9.1,4.2,'Cen','','',false],
+    ['NGC 5195','G',202.49829,47.26614,9.58,5.5,'CVn','','',false],
+    ['NGC 5248','G',204.38342,8.88517,9.97,4.07,'Boo','','',false],
+    ['NGC 5281','OCl',206.64646,-62.91653,5.9,6.9,'Cen','','',false],
+    ['NGC 5286','GCl',206.61075,-51.37347,8.31,6.6,'Cen','','',false],
+    ['NGC 5315','PN',208.48704,-66.51417,9.8,0.1,'Cir','','',false],
+    ['NGC 5316','OCl',208.48842,-61.86911,6.0,9.9,'Cen','','',false],
+    ['NGC 5460','OCl',211.86588,-48.34253,5.6,13.2,'Cen','','',false],
+    ['NGC 5466','GCl',211.364,28.5345,9.7,6.6,'Boo','','',false],
+    ['NGC 55','G',3.72333,-39.19664,8.54,29.85,'Scl','','',false],
+    ['NGC 559','OCl',22.38821,63.30144,9.5,9.0,'Cas','','',false],
+    ['NGC 5606','OCl',216.947,-59.63225,7.7,3.6,'Cen','','',false],
+    ['NGC 5617','OCl',217.43362,-60.71083,6.3,5.1,'Cen','','',false],
+    ['NGC 5662','OCl',218.90658,-56.61808,5.5,8.1,'Cen','','',false],
+    ['NGC 5715','OCl',220.87371,-57.57703,9.8,3.6,'Cir','','',false],
+    ['NGC 5749','OCl',222.22475,-54.49769,8.8,7.2,'Lup','','',false],
+    ['NGC 5822','OCl',226.08854,-54.39642,6.5,18.0,'Lup','','',false],
+    ['NGC 5823','OCl',226.37763,-55.60375,7.9,3.9,'Cir','','',false],
+    ['NGC 5824','GCl',225.99433,-33.06814,9.56,5.1,'Lup','','',false],
+    ['NGC 5866','G',226.62292,55.76322,9.89,6.31,'Dra','','',false],
+    ['NGC 5897','GCl',229.35167,-21.01011,8.52,9.9,'Lib','','',false],
+    ['NGC 5925','OCl',231.86175,-54.52878,8.4,4.8,'Nor','','',false],
+    ['NGC 5927','GCl',232.00179,-50.67278,8.86,6.6,'Lup','','',false],
+    ['NGC 5986','GCl',236.51433,-37.78614,6.92,5.4,'Lup','','',false],
+    ['NGC 5999','OCl',238.03596,-56.47281,9.0,3.3,'Nor','','',false],
+    ['NGC 6025','OCl',240.82413,-60.43136,5.1,11.4,'TrA','','',false],
+    ['NGC 6031','OCl',241.89742,-54.01494,8.5,4.8,'Nor','','',false],
+    ['NGC 6067','OCl',243.29604,-54.21894,5.6,8.1,'Nor','','',false],
+    ['NGC 6087','OCl',244.71075,-57.93458,5.4,10.2,'Nor','S Nor Cluster','',false],
+    ['NGC 6115','OCl',246.10992,-51.94825,9.8,4.5,'Nor','','',false],
+    ['NGC 6124','OCl',246.33358,-40.65369,5.8,13.5,'Sco','','',false],
+    ['NGC 6134','OCl',246.94375,-49.15117,7.2,6.9,'Nor','','',false],
+    ['NGC 6139','GCl',246.91879,-38.84975,9.68,4.5,'Sco','','',false],
+    ['NGC 6144','GCl',246.80892,-26.02472,9.63,5.4,'Sco','','',false],
+    ['NGC 6152','OCl',248.19008,-52.644,8.1,6.6,'Nor','','',false],
+    ['NGC 6164','Neb',248.42433,-48.08006,6.71,1.41,'Nor','','',false],
+    ['NGC 6165','Neb',248.51438,-48.1505,6.71,2.5,'Nor','','',false],
+    ['NGC 6167','OCl',248.64575,-49.77189,6.7,7.2,'Nor','','',false],
+    ['NGC 6169','OCl',248.51929,-44.04564,6.6,4.2,'Nor','','',false],
+    ['NGC 6178','OCl',248.94687,-45.64375,7.2,6.9,'Sco','','',false],
+    ['NGC 6192','OCl',250.09946,-43.36681,8.5,7.5,'Sco','','',false],
+    ['NGC 6200','OCl',251.03063,-47.46267,7.4,8.1,'Ara','','',false],
+    ['NGC 6204','OCl',251.53958,-47.01697,8.2,4.5,'Ara','','',false],
+    ['NGC 6208','OCl',252.36746,-53.72833,7.2,8.4,'Ara','','',false],
+    ['NGC 6210','PN',251.123,23.79983,9.65,0.5,'Her','','',false],
+    ['NGC 6229','GCl',251.74525,47.52781,9.86,4.8,'Her','','',false],
+    ['NGC 6231','OCl',253.5455,-41.82425,2.6,13.8,'Sco','','',false],
+    ['NGC 6235','GCl',253.35567,-22.17744,7.2,4.2,'Oph','','',false],
+    ['NGC 6242','OCl',253.88933,-39.46094,6.4,6.6,'Sco','','',false],
+    ['NGC 6249','OCl',254.42292,-44.81189,8.2,7.6,'Sco','','',false],
+    ['NGC 6250','Cl+N',254.48362,-45.93664,5.9,9.6,'Ara','','',false],
+    ['NGC 6259','OCl',255.18917,-44.65497,8.0,6.0,'Sco','','',false],
+    ['NGC 6268','OCl',255.54329,-39.72822,9.5,6.0,'Sco','','',false],
+    ['NGC 6281','OCl',256.17208,-37.98522,5.4,10.2,'Sco','','',false],
+    ['NGC 6284','GCl',256.11979,-24.76433,7.43,6.6,'Oph','','',false],
+    ['NGC 6293','GCl',257.54338,-26.58175,9.02,4.5,'Oph','','',false],
+    ['NGC 6302','PN',258.43596,-37.10314,9.6,0.74,'Sco','Bug Nebula','',false],
+    ['NGC 6304','GCl',258.63546,-29.46228,9.03,3.6,'Oph','','',false],
+    ['NGC 6316','GCl',259.15587,-28.14003,9.03,4.8,'Oph','','',false],
+    ['NGC 6322','OCl',259.60746,-42.93403,6.0,6.3,'Sco','','',false],
+    ['NGC 6352','GCl',261.3715,-48.42269,8.87,7.2,'Ara','','',false],
+    ['NGC 6356','GCl',260.89579,-17.81303,7.42,5.4,'Oph','','',false],
+    ['NGC 6362','GCl',262.9785,-67.04786,8.86,8.4,'Ara','','',false],
+    ['NGC 637','OCl',25.76296,64.03656,8.2,4.5,'Cas','','',false],
+    ['NGC 6374','OCl',263.67725,-32.58136,5.5,6.9,'Sco','','',false],
+    ['NGC 6388','GCl',264.07263,-44.73561,7.4,8.4,'Sco','','',false],
+    ['NGC 6396','OCl',264.40142,-35.02586,8.5,3.3,'Sco','','',false],
+    ['NGC 6397','GCl',265.17233,-53.67369,5.17,15.3,'Ara','','',false],
+    ['NGC 6400','OCl',265.05333,-36.94772,8.8,6.0,'Sco','','',false],
+    ['NGC 6425','OCl',266.757,-31.52939,7.2,4.8,'Sco','','',false],
+    ['NGC 6441','GCl',267.5535,-37.05108,8.0,4.8,'Sco','','',false],
+    ['NGC 6451','OCl',267.66933,-30.21161,8.2,7.2,'Sco','','',false],
+    ['NGC 6469','OCl',268.30054,-22.27511,8.2,9.0,'Sgr','','',false],
+    ['NGC 6496','GCl',269.76542,-44.26631,9.96,4.62,'Sco','','',false],
+    ['NGC 6507','OCl',269.96163,-17.45028,9.6,4.8,'Sgr','','',false],
+    ['NGC 6520','OCl',270.85058,-27.88611,7.6,5.4,'Sgr','','',false],
+    ['NGC 6522','GCl',270.89196,-30.03397,9.48,3.9,'Sgr','','',false],
+    ['NGC 6530','Cl+N',271.12929,-24.35806,4.6,6.0,'Sgr','','',false],
+    ['NGC 6535','GCl',270.96121,-0.29692,9.85,3.6,'Se2','','',false],
+    ['NGC 654','OCl',25.99763,61.88272,6.5,6.3,'Cas','','',false],
+    ['NGC 6541','GCl',272.00971,-43.71589,7.32,7.5,'CrA','','',false],
+    ['NGC 6543','PN',269.63912,66.63319,9.01,0.9,'Dra','Cat\'s Eye Nebula','',false],
+    ['NGC 6544','GCl',271.83333,-24.99836,9.9,6.0,'Sgr','','',false],
+    ['NGC 6546','OCl',271.84396,-23.29622,8.0,6.9,'Sgr','','',false],
+    ['NGC 6553','GCl',272.32283,-25.90786,9.08,5.4,'Sgr','','',false],
+    ['NGC 6568','OCl',273.18437,-21.62803,8.6,7.8,'Sgr','','',false],
+    ['NGC 6569','GCl',273.41112,-31.82767,9.47,4.5,'Sgr','','',false],
+    ['NGC 6572','PN',273.02587,6.85372,8.1,0.18,'Oph','','',false],
+    ['NGC 6584','GCl',274.65688,-52.21517,8.17,5.1,'Tel','','',false],
+    ['NGC 659','OCl',26.09579,60.66917,7.9,4.2,'Cas','','',false],
+    ['NGC 6590','RfN',274.27079,-19.86606,9.8,4.0,'Sgr','','',false],
+    ['NGC 6604','OCl',274.51233,-12.24311,6.5,9.6,'Se2','','',false],
+    ['NGC 6605','OCl',274.09033,-15.01519,6.0,6.3,'Se2','','',false],
+    ['NGC 6625','OCl',275.69708,-11.955,9.0,6.0,'Sct','','',false],
+    ['NGC 663','OCl',26.56687,61.21819,7.1,6.0,'Cas','','',false],
+    ['NGC 6633','OCl',276.81346,6.50822,4.6,12.0,'Oph','','',false],
+    ['NGC 6638','GCl',277.73438,-25.49642,9.68,4.2,'Sgr','','',false],
+    ['NGC 6645','OCl',278.15792,-16.88389,8.5,5.4,'Sgr','','',false],
+    ['NGC 6647','OCl',278.20558,-17.22867,8.0,3.6,'Sgr','','',false],
+    ['NGC 6649','OCl',278.3665,-10.40281,8.9,5.58,'Sct','','',false],
+    ['NGC 6652','GCl',278.94062,-32.99031,9.75,5.1,'Sgr','','',false],
+    ['NGC 6664','OCl',279.13896,-8.22075,7.8,6.0,'Sct','','',false],
+    ['NGC 6683','OCl',280.55821,-6.21225,9.4,3.0,'Sct','','',false],
+    ['NGC 6704','OCl',282.69071,-5.20542,9.2,3.3,'Sct','','',false],
+    ['NGC 6709','OCl',282.82892,10.31875,6.7,8.7,'Aql','','',false],
+    ['NGC 6712','GCl',283.27038,-8.70547,8.69,5.7,'Sct','','',false],
+    ['NGC 6716','OCl',283.64321,-19.90108,7.5,7.2,'Sgr','','',false],
+    ['NGC 6738','*Ass',285.33983,11.61561,8.3,5.4,'Aql','','',false],
+    ['NGC 6743','OCl',285.33612,29.27747,8.2,6.9,'Lyr','','',false],
+    ['NGC 6744','G',287.44208,-63.85753,9.25,15.67,'Pav','','',false],
+    ['NGC 6752','GCl',287.71575,-59.98186,6.28,13.2,'Pav','','',false],
+    ['NGC 6755','OCl',286.95438,4.26642,7.5,6.0,'Aql','','',false],
+    ['NGC 6760','GCl',287.80025,1.03047,9.78,5.4,'Aql','','',false],
+    ['NGC 6791','OCl',290.22175,37.77189,9.5,6.3,'Lyr','','',false],
+    ['NGC 6802','OCl',292.646,20.26097,8.8,4.5,'Vul','','',false],
+    ['NGC 6811','OCl',294.32463,46.38883,6.8,7.2,'Cyg','','',false],
+    ['NGC 6818','PN',295.99054,-14.15317,9.3,0.77,'Sgr','Little Gem Nebula','',false],
+    ['NGC 6819','OCl',295.32538,40.18675,7.3,6.9,'Cyg','Foxhead Cluster','',false],
+    ['NGC 6823','Cl+N',295.79121,23.29994,7.1,6.0,'Vul','','',false],
+    ['NGC 6826','PN',296.20046,50.52503,9.44,0.42,'Cyg','Blinking Planetary','',false],
+    ['NGC 6830','OCl',297.74825,23.10014,7.9,4.2,'Vul','','',false],
+    ['NGC 6834','OCl',298.05233,29.40817,7.8,4.5,'Cyg','','',false],
+    ['NGC 6866','OCl',300.97992,44.15911,7.6,5.1,'Cyg','','',false],
+    ['NGC 6871','OCl',301.49767,35.77725,5.2,9.3,'Cyg','','',false],
+    ['NGC 6883','OCl',302.83229,35.83219,8.0,4.5,'Cyg','','',false],
+    ['NGC 6888','HII',303.02729,38.35494,7.44,20.0,'Cyg','Crescent Nebula','',false],
+    ['NGC 6910','OCl',305.80021,40.77861,7.4,6.3,'Cyg','','',false],
+    ['NGC 6934','GCl',308.54787,7.40411,9.75,5.4,'Del','','',false],
+    ['NGC 6939','OCl',307.87554,60.66208,7.8,12.0,'Cep','','',false],
+    ['NGC 6940','OCl',308.61121,28.28272,6.3,10.8,'Vul','','',false],
+    ['NGC 6946','G',308.718,60.15392,9.05,11.4,'Cyg','Fireworks Galaxy','',false],
+    ['NGC 6960','SNR',311.49242,30.59514,7.0,210.0,'Cyg','Veil Nebula','',false],
+    ['NGC 6992','SNR',314.07946,31.74275,7.0,60.0,'Cyg','Eastern Veil','',false],
+    ['NGC 6995','SNR',314.29483,31.23517,7.0,12.0,'Cyg','Eastern Veil','',false],
+    ['NGC 7000','HII',314.82142,44.52878,4.0,120.0,'Cyg','North America Nebula','',false],
+    ['NGC 7009','PN',316.04496,-11.36325,8.0,0.7,'Aqr','Saturn Nebula','',false],
+    ['NGC 7023','Neb',315.39842,68.16956,7.2,10.0,'Cep','Iris Nebula','',false],
+    ['NGC 7027','PN',316.75637,42.23653,8.5,0.23,'Cyg','','',false],
+    ['NGC 7031','OCl',316.80229,50.87556,9.1,3.9,'Cyg','','',false],
+    ['NGC 7039','OCl',317.69917,45.62181,7.6,7.8,'Cyg','','',false],
+    ['NGC 7062','OCl',320.8645,46.37853,8.3,3.6,'Cyg','','',false],
+    ['NGC 7063','OCl',321.09042,36.4875,7.0,6.3,'Cyg','','',false],
+    ['NGC 7067','OCl',321.09633,48.00925,9.7,2.4,'Cyg','','',false],
+    ['NGC 7082','OCl',322.32392,47.12628,7.2,9.0,'Cyg','','',false],
+    ['NGC 7086','OCl',322.61479,51.60053,8.4,4.8,'Cyg','','',false],
+    ['NGC 7128','OCl',325.99087,53.71514,9.7,3.0,'Cyg','','',false],
+    ['NGC 7142','OCl',326.28963,65.77444,9.3,9.6,'Cep','','',false],
+    ['NGC 7160','OCl',328.41779,62.60331,6.1,4.2,'Cep','','',false],
+    ['NGC 7209','OCl',331.28267,46.48353,7.7,6.0,'Lac','','',false],
+    ['NGC 7226','OCl',332.61204,55.39858,9.6,3.0,'Cep','','',false],
+    ['NGC 7234','OCl',333.10425,57.27133,7.7,2.4,'Cep','','',false],
+    ['NGC 7243','OCl',333.78575,49.8975,6.4,15.0,'Lac','','',false],
+    ['NGC 7245','OCl',333.79796,54.34256,9.2,3.9,'Lac','','',false],
+    ['NGC 7261','OCl',335.02662,58.05183,8.4,6.9,'Cep','','',false],
+    ['NGC 7293','PN',337.41071,-20.83733,7.3,16.33,'Aqr','Helix Nebula','',false],
+    ['NGC 7295','OCl',337.01183,52.28908,9.7,2.7,'Lac','','',false],
+    ['NGC 7331','G',339.26671,34.41553,9.41,9.27,'Peg','','',false],
+    ['NGC 7380','Cl+N',341.83754,58.13242,7.2,25.0,'Cep','','',false],
+    ['NGC 744','OCl',29.62467,55.47461,7.9,11.7,'Per','','',false],
+    ['NGC 7510','OCl',347.76575,60.57089,7.9,3.9,'Cep','','',false],
+    ['NGC 752','OCl',29.39508,37.83339,5.7,39.0,'And','','',false],
+    ['NGC 7662','PN',351.47458,42.53494,8.3,0.28,'And','Copeland\'s Blue Snowball','',false],
+    ['NGC 7686','OCl',352.53075,49.13411,5.6,3.6,'And','','',false],
+    ['NGC 7788','OCl',359.18992,61.39992,9.4,2.4,'Cas','','',false],
+    ['NGC 7789','OCl',359.35025,56.70828,6.7,14.4,'Cas','','',false],
+    ['NGC 7790','OCl',359.60108,61.20831,8.5,3.6,'Cas','','',false],
+    ['NGC 7793','G',359.45763,-32.59103,9.29,10.42,'Scl','','',false],
+    ['NGC 869','OCl',34.744,57.11725,3.7,14.4,'Per','h Persei Cluster','',false],
+    ['NGC 884','OCl',35.63375,57.14411,3.8,10.5,'Per','chi Persei Cluster','',false],
+    ['NGC 956','OCl',38.12875,44.59347,8.9,4.5,'And','','',false],
+    ['NGC 957','OCl',38.32929,57.56969,7.6,10.2,'Per','','',false]
+  ];
+  const DSO_CATALOG = DSO_CATALOG_RAW.map(
+    ([name,type,ra,dec,mag,size,constAbbr,common,catalogRef,messier])=>
+      ({name,type,ra,dec,mag,size,constAbbr,common,catalogRef,messier})
+  );
+  const DSO_TYPE_LABELS = {
+    'G':'Galaxie','GPair':'Galaxienpaar','GTrpl':'Galaxien-Tripel','GGroup':'Galaxiengruppe',
+    'OCl':'Offener Sternhaufen','GCl':'Kugelsternhaufen','Cl+N':'Haufen + Nebel','*Ass':'Sternassoziation',
+    'Neb':'Nebel','PN':'Planetarischer Nebel','HII':'HII-Region','RfN':'Reflexionsnebel',
+    'EmN':'Emissionsnebel','SNR':'Supernova-Überrest'
+  };
+  const DSO_GALAXY_TYPES = new Set(['G','GPair','GTrpl','GGroup']);
+  const DSO_CLUSTER_TYPES = new Set(['OCl','GCl','Cl+N','*Ass']);
+  const DSO_NEBULA_TYPES = new Set(['Neb','PN','HII','RfN','EmN','SNR']);
+
+  function angularDist(ra1,dec1,ra2,dec2){
+    const r1=toRad(ra1), d1=toRad(dec1), r2=toRad(ra2), d2=toRad(dec2);
+    const cosd = Math.sin(d1)*Math.sin(d2) + Math.cos(d1)*Math.cos(d2)*Math.cos(r1-r2);
+    return Math.acos(Math.max(-1, Math.min(1, cosd)));
+  }
+  function findConstellation(raDeg, decDeg){
+    if(!isFinite(raDeg) || !isFinite(decDeg)) return '–';
+    let best=null, bestD=Infinity;
+    for(const c of CONSTELLATIONS){
+      const d = angularDist(raDeg, decDeg, c.ra, c.dec);
+      if(d<bestD){ bestD=d; best=c; }
+    }
+    return best ? `${best.name} (${best.abbr})` : '–';
+  }
+
+  // ---------- CSV Parser ----------
+  function parseCSV(text){
+    const rows = [];
+    let i=0, field='', row=[], inQ=false;
+    const n = text.length;
+    while(i<n){
+      const c = text[i];
+      if(inQ){
+        if(c === '"'){
+          if(text[i+1] === '"'){ field += '"'; i += 2; continue; }
+          inQ = false; i++; continue;
+        }
+        field += c; i++; continue;
+      } else {
+        if(c === '"'){ inQ = true; i++; continue; }
+        if(c === ','){ row.push(field); field=''; i++; continue; }
+        if(c === '\r'){ i++; continue; }
+        if(c === '\n'){ row.push(field); rows.push(row); row=[]; field=''; i++; continue; }
+        field += c; i++; continue;
+      }
+    }
+    if(field.length>0 || row.length>0){ row.push(field); rows.push(row); }
+    if(!rows.length) return [];
+    const header = rows[0].map(h=>h.trim());
+    return rows.slice(1)
+      .filter(r => !(r.length===1 && r[0]===''))
+      .map(r=>{
+        const obj = {};
+        header.forEach((h,idx)=>{ obj[h] = r[idx] !== undefined ? r[idx] : ''; });
+        return obj;
+      });
+  }
+
+  // ---------- Daten laden ----------
+  const TAP_URL = 'https://exoplanetarchive.ipac.caltech.edu/TAP/sync';
+  const ADQL = "select pl_name,hostname,sy_vmag,ra,dec,pl_orbper,pl_tranmid,pl_trandur,pl_trandep from pscomppars where tran_flag=1 and pl_tranmid is not null and pl_orbper is not null and pl_trandur is not null";
+  const dataUrl = TAP_URL + '?query=' + encodeURIComponent(ADQL) + '&format=csv';
+
+  let rawData = [];
+  const statusEl = document.getElementById('status');
+  const fallbackEl = document.getElementById('fallback');
+  const recomputeBtn = document.getElementById('recomputeBtn');
+
+  document.getElementById('manualUrl').href = dataUrl;
+  document.getElementById('manualUrl').textContent = dataUrl;
+
+  document.getElementById('loadBtn').addEventListener('click', loadData);
+  document.getElementById('recomputeBtn').addEventListener('click', compute);
+  document.getElementById('csvUpload').addEventListener('change', function(e){
+    const file = e.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = function(ev){
+      rawData = parseCSV(ev.target.result);
+      statusEl.textContent = rawData.length + ' Planeten aus hochgeladener Datei geladen.';
+      recomputeBtn.disabled = false;
+      compute();
+    };
+    reader.readAsText(file);
+  });
+
+  // Mehrere Wege zum Datenabruf. corsproxy.io zuerst, weil das bei diesem Nutzer/Netzwerk
+  // zuverlässig funktioniert (die anderen Wege scheitern bei ihm konsequent) – restliche Wege
+  // bleiben als Fallback, falls corsproxy.io einmal down ist.
+  const DATA_SOURCES = [
+    { name: 'Proxy: corsproxy.io', url: 'https://corsproxy.io/?url=' + encodeURIComponent(dataUrl) },
+    { name: 'NASA Exoplanet Archive (direkt)', url: dataUrl },
+    { name: 'Proxy: allorigins.win', url: 'https://api.allorigins.win/raw?url=' + encodeURIComponent(dataUrl) },
+    { name: 'Proxy: codetabs.com', url: 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(dataUrl) }
+  ];
+
+  // Bewusst NUR ein einfacher GET ohne Extra-Header. Bewusst OHNE AbortController/signal:
+  // manche Sicherheits-/Adblock-Erweiterungen klinken sich in fetch() ein und leiten den Aufruf
+  // intern per postMessage weiter – ein AbortSignal lässt sich dabei nicht klonen. Timeout daher
+  // über ein simples Promise.race statt über signal.
+  function fetchWithTimeout(url, ms){
+    let timer;
+    const timeoutPromise = new Promise((_, reject) => {
+      timer = setTimeout(() => reject(new Error('Zeitüberschreitung nach ' + (ms/1000) + 's')), ms);
+    });
+    const fetchPromise = fetch(url).then(async resp => {
+      if(!resp.ok) throw new Error('HTTP-Status ' + resp.status);
+      const text = await resp.text();
+      if(!text || text.trim().length < 20) throw new Error('Antwort war leer/zu kurz (' + text.length + ' Zeichen)');
+      return text;
+    });
+    // clearTimeout, sobald eine Seite des Rennens entschieden ist - sonst bliebe der Timer bis zu
+    // 20s unnötig aktiv, selbst wenn die Anfrage längst (erfolgreich oder mit Fehler) fertig ist.
+    return Promise.race([fetchPromise, timeoutPromise]).finally(() => clearTimeout(timer));
+  }
+
+  function renderLog(entries){
+    const logEl = document.getElementById('loadLog');
+    logEl.innerHTML = entries.map(e =>
+      `<div>${e.ok ? '✅' : '❌'} <strong>${e.name}</strong>${e.msg ? ' — ' + e.msg : ''}</div>`
+    ).join('');
+  }
+
+  async function loadData(){
+    fallbackEl.style.display = 'none';
+    const log = [];
+    renderLog(log);
+    for(let i=0; i<DATA_SOURCES.length; i++){
+      const src = DATA_SOURCES[i];
+      statusEl.textContent = `Lade Daten … Versuch ${i+1}/${DATA_SOURCES.length}: ${src.name}`;
+      try{
+        const text = await fetchWithTimeout(src.url, 20000);
+        const parsed = parseCSV(text);
+        if(!parsed.length) throw new Error('CSV geparst, aber 0 Zeilen erkannt (Format unerwartet?)');
+        rawData = parsed;
+        log.push({ name: src.name, ok: true, msg: rawData.length + ' Zeilen' });
+        renderLog(log);
+        statusEl.textContent = `${rawData.length} Planeten geladen (Quelle: ${src.name}).`;
+        recomputeBtn.disabled = false;
+        compute();
+        return;
+      }catch(err){
+        log.push({ name: src.name, ok: false, msg: (err && err.message) ? err.message : String(err) });
+        renderLog(log);
+      }
+    }
+    statusEl.textContent = 'Alle automatischen Wege sind fehlgeschlagen — Details siehe Log unten.';
+    fallbackEl.style.display = 'block';
+  }
+
+  // ---------- Horizont-/Obergrenze-Profile: Ausgangswerte des ersten Standorts "Bundesplatz" ----------
+  // Exakt vermessene Werte für den bisher einzigen (jetzt: ersten) Standort. Diese beiden Listen
+  // dienen nur noch als EINMALIGE Startbefüllung für den Standort "Bundesplatz" (siehe
+  // makeDefaultLocations unten) - alle Stützpunkte gehören ab jetzt fest zu einem Standort-Datensatz,
+  // nicht mehr zu global editierbaren Tabellen.
+  const DEFAULT_HORIZON = [
+    {az:193, minEl:40, note:'Hausdach (SSW)'},
+    {az:243, minEl:29, note:'Hausdach (WSW) 3'},
+    {az:249, minEl:17, note:'Hausdach (WSW) 2'},
+    {az:260, minEl:19, note:'Hausdach (WSW) 1'},
+    {az:266, minEl:29, note:'Baum (W) 3'},
+    {az:283, minEl:29, note:'Baum (W) 2'},
+    {az:286, minEl:17, note:'Baum (W) 1'},
+    {az:290, minEl:21, note:'Baum (WNW) 2'},
+    // Nachträglich per Beobachtung präzisiert (M101, Aufnahme 28./29.07.): Artefakte traten ab
+    // 00:28 Uhr auf, als das Objekt bei Az 308,6° eine Höhe von 41,9° erreichte - die bis dahin
+    // angenommene lineare Interpolation zwischen den Nachbarpunkten (290°/21° und 313°/42°) hatte
+    // dort fälschlich nur ~38° Mindesthöhe ergeben. Zusätzlicher Stützpunkt schließt diese Lücke.
+    {az:309, minEl:42, note:'Baum (WNW) 1b'},
+    {az:313, minEl:42, note:'Baum (WNW) 1'}
+  ];
+
+  function minElevationAt(az, profile){
+    if(!profile.length) return 90;
+    if(az <= profile[0].az) return profile[0].minEl;
+    if(az >= profile[profile.length-1].az) return profile[profile.length-1].minEl;
+    for(let i=0;i<profile.length-1;i++){
+      const p0=profile[i], p1=profile[i+1];
+      if(az>=p0.az && az<=p1.az){
+        const t = (p1.az===p0.az) ? 0 : (az-p0.az)/(p1.az-p0.az);
+        return p0.minEl + t*(p1.minEl-p0.minEl);
+      }
+    }
+    return 90;
+  }
+
+  // Spiegelt das Mindesthöhe-Profil oben 1:1, nur für die OBERE statt der unteren Grenze. Exakt
+  // vermessene Werte: Das Teleskop steht nicht mittig auf dem eigenen Balkon, der Balkon darüber
+  // verdeckt deshalb Richtung SSW (Azimut 193°, linke Ecke) schon ab 47° Höhe, Richtung WNW
+  // (Azimut 313°, rechte Ecke) erst ab 60° Höhe.
+  const DEFAULT_CEILING = [
+    {az:193, maxEl:47, note:'Balkon oben – linke Ecke (SSW)'},
+    {az:313, maxEl:60, note:'Balkon oben – rechte Ecke (WNW)'}
+  ];
+
+  // ---------- Standort-Verwaltung ----------
+  // Untere/obere Grenze, Koordinaten und Azimut-Bereich sind jetzt fest einem "Standort" zugeordnet
+  // (statt global editierbarer Tabellen). Standorte werden im Browser gespeichert (localStorage),
+  // damit sie über Neustarts des Tools hinweg erhalten bleiben; Export/Import als JSON-Datei dient
+  // als Sicherung/Übertragungsweg, falls der Browser-Speicher mal nicht verfügbar ist (z.B. privater
+  // Modus) oder das Tool auf einem anderen Rechner/Port läuft.
+  const LOCATION_STORAGE_KEY = 'skytracker_locations_v1';
+  const ACTIVE_LOCATION_STORAGE_KEY = 'skytracker_active_location_v1';
+  // Obergrenze je Grenze (unten/oben) pro Standort - rein zum Schutz vor einer unübersichtlich
+  // langen Stützpunkt-Liste/einem überladenen Diagramm; 30 liegt großzügig über dem bisherigen
+  // Bedarf (10 unten / 2 oben für Bundesplatz).
+  const MAX_PROFILE_POINTS = 30;
+
+  function makeDefaultLocations(){
+    return [{
+      id: 'loc-bundesplatz',
+      name: 'Bundesplatz',
+      lat: 52.479476,
+      lon: 13.329154,
+      azStart: 180,
+      azEnd: 313,
+      horizon: DEFAULT_HORIZON.map(p=>({...p})),
+      ceiling: DEFAULT_CEILING.map(p=>({...p}))
+    }];
+  }
+
+  function loadLocations(){
+    try{
+      const raw = localStorage.getItem(LOCATION_STORAGE_KEY);
+      if(raw){
+        const parsed = JSON.parse(raw);
+        if(Array.isArray(parsed) && parsed.length) return parsed;
+      }
+    } catch(e){ /* localStorage nicht verfügbar (z.B. privater Modus) - auf Default zurückfallen */ }
+    return makeDefaultLocations();
+  }
+
+  function saveLocations(){
+    try{ localStorage.setItem(LOCATION_STORAGE_KEY, JSON.stringify(locations)); }
+    catch(e){
+      showToast('Hinweis: Standorte konnten nicht dauerhaft gespeichert werden (Browser-Speicher nicht verfügbar) - „Standorte exportieren“ nutzen, um sie zu sichern.');
+    }
+  }
+
+  function saveActiveLocationId(id){
+    try{ localStorage.setItem(ACTIVE_LOCATION_STORAGE_KEY, id); } catch(e){ /* siehe saveLocations() */ }
+  }
+
+  let locations = loadLocations();
+  let activeLocationId = (function(){
+    try{
+      const stored = localStorage.getItem(ACTIVE_LOCATION_STORAGE_KEY);
+      if(stored && locations.some(l=>l.id===stored)) return stored;
+    } catch(e){ /* siehe saveLocations() */ }
+    return locations[0].id;
+  })();
+
+  function getActiveLocation(){
+    return locations.find(l=>l.id===activeLocationId) || locations[0];
+  }
+
+  // getHorizonRows()/getCeilingRows() lesen ab jetzt aus dem aktiven Standort-Datensatz statt aus
+  // einer DOM-Tabelle - drawCompass()/compute()/computeDso() rufen diese Funktionen unverändert auf
+  // und merken vom Umbau nichts.
+  function getHorizonRows(){
+    const loc = getActiveLocation();
+    return loc ? loc.horizon.map(p=>({...p})).sort((a,b)=>a.az-b.az) : [];
+  }
+  function getCeilingRows(){
+    const loc = getActiveLocation();
+    return loc ? loc.ceiling.map(p=>({...p})).sort((a,b)=>a.az-b.az) : [];
+  }
+
+  // Kacheln statt Dropdown, damit alle Standorte gleichzeitig sichtbar sind. Der aktive Standort
+  // bekommt die normale (nicht-"secondary") Button-Farbe - dasselbe Blau wie der "Doku"-Button oben
+  // rechts, da beide dieselbe CSS-Klasse/Grundstil nutzen.
+  function rebuildLocationTiles(){
+    const container = document.getElementById('locationTiles');
+    container.innerHTML = locations.map(l=>{
+      const isActive = l.id === activeLocationId;
+      return `<button type="button" class="location-tile${isActive ? '' : ' secondary'}" data-id="${escapeHtml(l.id)}" style="padding:8px 14px; font-size:0.85rem;">${escapeHtml(l.name)}</button>`;
+    }).join('');
+    container.querySelectorAll('.location-tile').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const id = btn.dataset.id;
+        if(id === activeLocationId) return;
+        activeLocationId = id;
+        saveActiveLocationId(activeLocationId);
+        applyActiveLocation();
+      });
+    });
+  }
+
+  // Leert die Ergebnistabellen/Zusammenfassung bei einem Standortwechsel: bereits berechnete
+  // Ergebnisse basieren auf Koordinaten/Sichtfenster des vorherigen Standorts und wären sonst
+  // stillschweigend falsch/veraltet.
+  function clearResults(){
+    allRows = [];
+    currentRenderedRows = [];
+    document.getElementById('resultsBody').innerHTML = '';
+    document.getElementById('rowCount').textContent = '0 Ergebnisse';
+    allRowsDso = [];
+    currentRenderedRowsDso = [];
+    document.getElementById('resultsBodyDso').innerHTML = '';
+    document.getElementById('rowCountDso').textContent = '0 Ergebnisse';
+    document.getElementById('summary').innerHTML = 'Standort geändert – bitte Daten neu laden bzw. neu berechnen.';
+  }
+
+  function applyActiveLocationFields(){
+    const loc = getActiveLocation();
+    if(!loc) return;
+    document.getElementById('lat').value = loc.lat;
+    document.getElementById('lon').value = loc.lon;
+    document.getElementById('azStart').value = loc.azStart;
+    document.getElementById('azEnd').value = loc.azEnd;
+    document.getElementById('locStuetzpunkteInfo').textContent =
+      `${loc.horizon.length} Stützpunkt(e) unten, ${loc.ceiling.length} oben – über „Bearbeiten“ anpassbar.`;
+  }
+
+  function applyActiveLocation(){
+    // rebuildLocationTiles() gehört bewusst hierher (statt nur an den einzelnen Aufrufstellen):
+    // so kann die blaue Hervorhebung der aktiven Kachel nie vergessen werden, egal ob der
+    // Standortwechsel durch einen Kachel-Klick, das Anlegen/Löschen oder einen Import ausgelöst wurde.
+    rebuildLocationTiles();
+    applyActiveLocationFields();
+    setHighlight(null);
+    clearResults();
+    drawCompass();
+  }
+
+  // ---------- Standort-Modal: Anlegen/Bearbeiten (Name, Koordinaten, Azimut, Stützpunkte) ----------
+  let editingLocationId = null; // null = "Neuer Standort" wird angelegt statt eines bestehenden bearbeitet
+
+  function buildProfileRowHtml(azClass, elClass, elMax, noteClass, removeClass, az, el, note){
+    return `
+      <td style="padding:3px 4px;"><input type="number" class="${azClass}" value="${az}" min="0" max="360" style="width:70px; background:var(--panel2); border:1px solid var(--border); color:var(--text); border-radius:6px; padding:5px 6px;"></td>
+      <td style="padding:3px 4px;"><input type="number" class="${elClass}" value="${el}" min="-90" max="${elMax}" style="width:70px; background:var(--panel2); border:1px solid var(--border); color:var(--text); border-radius:6px; padding:5px 6px;"></td>
+      <td style="padding:3px 4px;"><input type="text" class="${noteClass}" value="${note||''}" placeholder="z.B. Baum" style="width:100%; background:var(--panel2); border:1px solid var(--border); color:var(--text); border-radius:6px; padding:5px 6px;"></td>
+      <td style="padding:3px 4px;"><button type="button" class="secondary ${removeClass}" style="padding:4px 9px; font-size:0.78rem;">&times;</button></td>
+    `;
+  }
+
+  function updateLocRowCounts(){
+    const hCount = document.getElementById('locHorizonRows').children.length;
+    const cCount = document.getElementById('locCeilingRows').children.length;
+    document.getElementById('locHorizonCount').textContent = `${hCount} / ${MAX_PROFILE_POINTS}`;
+    document.getElementById('locCeilingCount').textContent = `${cCount} / ${MAX_PROFILE_POINTS}`;
+    document.getElementById('locAddHorizonRow').disabled = hCount >= MAX_PROFILE_POINTS;
+    document.getElementById('locAddCeilingRow').disabled = cCount >= MAX_PROFILE_POINTS;
+  }
+
+  function addLocProfileRow(kind, az, el, note){
+    const isHorizon = kind === 'horizon';
+    const tbody = document.getElementById(isHorizon ? 'locHorizonRows' : 'locCeilingRows');
+    if(tbody.children.length >= MAX_PROFILE_POINTS){
+      showToast(`Maximal ${MAX_PROFILE_POINTS} Stützpunkte je Grenze (unten/oben) pro Standort.`);
+      return;
+    }
+    const azClass = isHorizon ? 'loc-hz-az' : 'loc-clg-az';
+    const elClass = isHorizon ? 'loc-hz-el' : 'loc-clg-el';
+    const noteClass = isHorizon ? 'loc-hz-note' : 'loc-clg-note';
+    const removeClass = isHorizon ? 'loc-hz-remove' : 'loc-clg-remove';
+    const tr = document.createElement('tr');
+    tr.innerHTML = buildProfileRowHtml(azClass, elClass, 90, noteClass, removeClass, az, el, note);
+    tbody.appendChild(tr);
+    tr.querySelector(`.${removeClass}`).addEventListener('click', ()=>{ tr.remove(); updateLocRowCounts(); });
+    updateLocRowCounts();
+  }
+
+  function readLocProfileRows(kind){
+    const isHorizon = kind === 'horizon';
+    const tbodyId = isHorizon ? 'locHorizonRows' : 'locCeilingRows';
+    const azClass = isHorizon ? 'loc-hz-az' : 'loc-clg-az';
+    const elClass = isHorizon ? 'loc-hz-el' : 'loc-clg-el';
+    const noteClass = isHorizon ? 'loc-hz-note' : 'loc-clg-note';
+    const rows = [];
+    document.querySelectorAll(`#${tbodyId} tr`).forEach(tr=>{
+      const az = parseFloat(tr.querySelector(`.${azClass}`).value);
+      const el = parseFloat(tr.querySelector(`.${elClass}`).value);
+      const note = tr.querySelector(`.${noteClass}`).value;
+      if(isFinite(az) && isFinite(el)) rows.push(isHorizon ? {az, minEl: el, note} : {az, maxEl: el, note});
+    });
+    rows.sort((a,b)=>a.az-b.az);
+    return rows;
+  }
+
+  function clearLocProfileRows(){
+    document.getElementById('locHorizonRows').innerHTML = '';
+    document.getElementById('locCeilingRows').innerHTML = '';
+    updateLocRowCounts();
+  }
+
+  // ========== Kamera-Vermessung: Stützpunkte per Kamera+Sensoren direkt einmessen ==========
+  // Portiert aus der vom Nutzer bereitgestellten "Azimuth und Höhenwinkel.html" (Kamerabild als
+  // Hintergrund, Azimuth per Kompass/Magnetometer, Höhenwinkel per Neigungssensor/Gyroskop, via
+  // W3C DeviceOrientation-API). Bewusst in einer eigenen Closure gekapselt (statt lose im Skytracker-
+  // Hauptscope), damit eigene Variablen wie "smooth"/"records"/DEG/RAD nicht mit dem restlichen
+  // Skytracker-Code kollidieren - nach außen wird nur CameraSurvey.open(kind, onImport) sichtbar.
+  //
+  // WICHTIG: Kamera + Bewegungssensoren funktionieren nur in einem "sicheren Kontext" (HTTPS oder
+  // http://localhost) - bei einer direkt per Doppelklick geöffneten Datei (file://...) verweigert der
+  // Browser den Zugriff. Über den GitHub-Pages-Link und über "Transit-Planer starten.command" (startet
+  // einen lokalen Server auf http://localhost) ist das gegeben, siehe Fehlermeldung im Startbildschirm.
+  const CameraSurvey = (function(){
+    "use strict";
+    const DEG = Math.PI / 180, RAD = 180 / Math.PI;
+    const DIRS = ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
+
+    const dlg = document.getElementById('cameraModal');
+    const videoEl = document.getElementById('camVideo');
+    const azValEl = document.getElementById('camAzVal');
+    const azDirEl = document.getElementById('camAzDir');
+    const elValEl = document.getElementById('camElVal');
+    const warnEl = document.getElementById('camWarnbar');
+    const targetLabelEl = document.getElementById('camTargetLabel');
+    const startscreenEl = document.getElementById('camStartscreen');
+    const startscreenTextEl = document.getElementById('camStartscreenText');
+    const startErrEl = document.getElementById('camStartError');
+    const btnStart = document.getElementById('camBtnStart');
+    const btnStartCancel = document.getElementById('camStartCancelBtn');
+    const btnSave = document.getElementById('camBtnSave');
+    const btnToggleLog = document.getElementById('camBtnToggleLog');
+    const btnDone = document.getElementById('camBtnDone');
+    const btnClear = document.getElementById('camBtnClear');
+    const closeXEl = document.getElementById('camCloseXBtn');
+    const logEl = document.getElementById('camLog');
+    const logBodyEl = document.getElementById('camLogBody');
+    const countEl = document.getElementById('camCount');
+    const confirmOverlayEl = document.getElementById('camConfirmOverlay');
+    const confirmTextEl = document.getElementById('camConfirmText');
+    const confirmOkEl = document.getElementById('camConfirmOk');
+    const confirmCancelEl = document.getElementById('camConfirmCancel');
+    const toastEl = document.getElementById('camToast');
+
+    let stream = null, smooth = null, lastAzimuth = 0, lastElevation = 0, records = [];
+    let gotAnyOrientation = false, orientationBound = false, toastTimer = null, onCloseCb = null;
+
+    function clamp(v, lo, hi){ return Math.max(lo, Math.min(hi, v)); }
+
+    function normalizeVec(v){
+      const len = Math.sqrt(v[0]*v[0] + v[1]*v[1] + v[2]*v[2]);
+      if(len < 1e-9) return v;
+      return [v[0]/len, v[1]/len, v[2]/len];
+    }
+
+    // Blickrichtung der Rückkamera (Geräte-Z-Achse) im Welt-Koordinatensystem (x=Ost, y=Nord, z=Oben)
+    // aus alpha/beta/gamma - identisch zur Herleitung im Ursprungstool: R = Rz(alpha)*Rx(beta)*Ry(gamma)
+    // (W3C DeviceOrientation), Kamerarichtung = -R * [0,0,1]^T (dritte Spalte von R, negiert).
+    function orientationToVector(alphaDeg, betaDeg, gammaDeg){
+      const a = alphaDeg * DEG, b = betaDeg * DEG, g = gammaDeg * DEG;
+      const ca = Math.cos(a), sa = Math.sin(a);
+      const cb = Math.cos(b), sb = Math.sin(b);
+      const cg = Math.cos(g), sg = Math.sin(g);
+      const r13 = ca * sg + sa * sb * cg;
+      const r23 = sa * sg - ca * sb * cg;
+      const r33 = cb * cg;
+      return [-r13, -r23, -r33];
+    }
+
+    function vecToAzEl(v){
+      let azimuth = Math.atan2(v[0], v[1]) * RAD;
+      if(azimuth < 0) azimuth += 360;
+      const elevation = Math.asin(clamp(v[2], -1, 1)) * RAD;
+      return { azimuth, elevation };
+    }
+
+    function compassLabel(az){ return DIRS[Math.round(az / 22.5) % 16]; }
+
+    function updateDisplay(alphaDeg, betaDeg, gammaDeg){
+      const v = orientationToVector(alphaDeg, betaDeg, gammaDeg);
+      if(!smooth){ smooth = v; }
+      else{
+        smooth = normalizeVec([
+          smooth[0] + (v[0]-smooth[0]) * 0.18,
+          smooth[1] + (v[1]-smooth[1]) * 0.18,
+          smooth[2] + (v[2]-smooth[2]) * 0.18
+        ]);
+      }
+      const ae = vecToAzEl(smooth);
+      lastAzimuth = ae.azimuth;
+      lastElevation = ae.elevation;
+      azValEl.textContent = ae.azimuth.toFixed(1) + '°';
+      azDirEl.textContent = compassLabel(ae.azimuth);
+      elValEl.textContent = (ae.elevation >= 0 ? '+' : '') + ae.elevation.toFixed(1) + '°';
+    }
+
+    function setWarning(msg){
+      if(!msg){ warnEl.classList.remove('show'); warnEl.textContent = ''; return; }
+      warnEl.textContent = msg;
+      warnEl.classList.add('show');
+    }
+
+    function handleOrientation(evt){
+      gotAnyOrientation = true;
+      let alphaDeg, absolute = false;
+      if(typeof evt.webkitCompassHeading === 'number' && !isNaN(evt.webkitCompassHeading)){
+        alphaDeg = (360 - evt.webkitCompassHeading) % 360;
+        absolute = true;
+      } else if(typeof evt.alpha === 'number'){
+        alphaDeg = evt.alpha;
+        absolute = !!evt.absolute;
+      } else { return; }
+      const betaDeg = typeof evt.beta === 'number' ? evt.beta : 0;
+      const gammaDeg = typeof evt.gamma === 'number' ? evt.gamma : 0;
+      updateDisplay(alphaDeg, betaDeg, gammaDeg);
+      setWarning(absolute ? null :
+        '⚠️ Kompass evtl. nicht Nord-referenziert - Wert kann relativ sein. Falls verfügbar Kalibrierung/„Achterbewegung" durchführen.');
+    }
+
+    function startOrientationSensors(){
+      if('ondeviceorientationabsolute' in window){
+        window.addEventListener('deviceorientationabsolute', handleOrientation, true);
+      } else {
+        window.addEventListener('deviceorientation', handleOrientation, true);
+      }
+      orientationBound = true;
+      setTimeout(()=>{
+        if(!gotAnyOrientation) setWarning('⚠️ Keine Sensordaten empfangen. Bewegungssensoren evtl. nicht verfügbar/erlaubt.');
+      }, 2000);
+    }
+
+    function startCamera(){
+      return navigator.mediaDevices.getUserMedia({ video:{ facingMode:{ ideal:'environment' } }, audio:false })
+        .then(s=>{ stream = s; videoEl.srcObject = s; return videoEl.play(); });
+    }
+
+    function requestOrientationPermission(){
+      if(typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function'){
+        return DeviceOrientationEvent.requestPermission().then(state=>{
+          if(state !== 'granted') throw new Error('Zugriff auf Bewegungssensoren wurde nicht erlaubt.');
+        });
+      }
+      return Promise.resolve();
+    }
+
+    function stopEverything(){
+      if(stream){ stream.getTracks().forEach(t=>t.stop()); stream = null; }
+      videoEl.srcObject = null;
+      if(orientationBound){
+        window.removeEventListener('deviceorientationabsolute', handleOrientation, true);
+        window.removeEventListener('deviceorientation', handleOrientation, true);
+        orientationBound = false;
+      }
+      smooth = null; gotAnyOrientation = false; setWarning(null);
+    }
+
+    // Eigener Toast/Bestätigungs-Dialog statt window.alert()/confirm(): Blockierende System-Dialoge
+    // pausieren auf manchen mobilen Browsern (v.a. iOS Safari) den laufenden Kamera-Stream und lassen
+    // ihn danach eingefroren zurück - identisches Problem/identische Lösung wie im Ursprungstool.
+    function showCamToast(msg){
+      toastEl.textContent = msg;
+      toastEl.classList.add('show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(()=>toastEl.classList.remove('show'), 2200);
+    }
+
+    function showCamConfirm(message, onConfirm){
+      confirmTextEl.textContent = message;
+      confirmOverlayEl.classList.add('show');
+      function cleanup(){
+        confirmOverlayEl.classList.remove('show');
+        confirmOkEl.removeEventListener('click', okHandler);
+        confirmCancelEl.removeEventListener('click', cancelHandler);
+      }
+      function okHandler(){ cleanup(); onConfirm(); }
+      function cancelHandler(){ cleanup(); }
+      confirmOkEl.addEventListener('click', okHandler);
+      confirmCancelEl.addEventListener('click', cancelHandler);
+    }
+
+    function renderLog(){
+      logBodyEl.innerHTML = '';
+      records.forEach((r,i)=>{
+        const tr = document.createElement('tr');
+        tr.innerHTML =
+          '<td>' + (i+1) + '</td>' +
+          '<td>' + r.azimuth.toFixed(1) + '°</td>' +
+          '<td>' + (r.elevation >= 0 ? '+' : '') + r.elevation.toFixed(1) + '°</td>' +
+          '<td class="cam-del" data-i="' + i + '">✕</td>';
+        logBodyEl.appendChild(tr);
+      });
+      countEl.textContent = String(records.length);
+    }
+
+    logBodyEl.addEventListener('click', (e)=>{
+      const i = e.target.getAttribute('data-i');
+      if(i !== null){ records.splice(parseInt(i,10), 1); renderLog(); }
+    });
+
+    btnSave.addEventListener('click', ()=>{
+      records.push({ azimuth:lastAzimuth, elevation:lastElevation });
+      renderLog();
+      showCamToast('Punkt ' + records.length + ' gespeichert.');
+    });
+
+    btnToggleLog.addEventListener('click', ()=>logEl.classList.toggle('show'));
+
+    btnClear.addEventListener('click', ()=>{
+      if(!records.length) return;
+      showCamConfirm('Alle ' + records.length + ' gespeicherten Punkte löschen?', ()=>{
+        records = []; renderLog();
+      });
+    });
+
+    // pendingResult ist die einzige Quelle der Wahrheit dafür, WAS beim nächsten 'close'-Event an den
+    // Aufrufer gemeldet wird: null = abgebrochen (X, "Abbrechen" im Startbildschirm ODER native
+    // Escape-Taste - alle drei laufen zwangsläufig über denselben 'close'-Listener unten), ein Array =
+    // "Übernehmen" wurde geklickt. So gibt es nur EINE Stelle, die den Callback aufruft (im
+    // 'close'-Listener), unabhängig davon, WIE der Dialog geschlossen wurde - kein Risiko, den
+    // Callback versehentlich doppelt (oder mit uneindeutiger zeitlicher Reihenfolge) auszulösen.
+    let pendingResult = null;
+
+    function discardAndClose(){
+      pendingResult = null;
+      dlg.close();
+    }
+    closeXEl.addEventListener('click', discardAndClose);
+    btnStartCancel.addEventListener('click', discardAndClose);
+
+    btnDone.addEventListener('click', ()=>{
+      if(!records.length){ showCamToast('Keine Punkte zum Übernehmen vorhanden.'); return; }
+      // Bewusst NICHT auf [0,90] geklemmt: Ein negativer Höhenwinkel ist physikalisch sinnvoll, wenn
+      // von erhöhter Position aus gemessen wird (z.B. Balkon über der Umgebung) - der tatsächliche
+      // Horizont kann dann unterhalb der 0°-Ebene liegen. Nur der theoretisch unmögliche Bereich
+      // (Nadir/Zenit) wird als Sicherheitsnetz begrenzt, der gemessene Wert selbst bleibt erhalten.
+      pendingResult = records.map(r=>({
+        az: Math.round(r.azimuth * 10) / 10,
+        el: Math.round(clamp(r.elevation, -90, 90) * 10) / 10
+      }));
+      dlg.close();
+    });
+
+    btnStart.addEventListener('click', ()=>{
+      startErrEl.style.display = 'none';
+      btnStart.disabled = true;
+      btnStart.textContent = 'Starte …';
+      // Wichtig: requestPermission() für die Sensoren muss auf iOS als allererstes passieren, noch
+      // innerhalb der Tap-Geste. Wird zuerst auf die (asynchrone) Kamera-Erlaubnis gewartet, gilt der
+      // Tap in Safari als "verbraucht" und der Sensor-Dialog schlägt fehl (identisch zum Ursprungstool).
+      requestOrientationPermission()
+        .then(startCamera)
+        .then(()=>{
+          startOrientationSensors();
+          startscreenEl.style.display = 'none';
+        })
+        .catch(err=>{
+          btnStart.disabled = false;
+          btnStart.textContent = 'Kamera & Sensoren aktivieren';
+          startErrEl.style.display = 'block';
+          startErrEl.textContent = 'Fehler: ' + (err && err.message ? err.message : err) +
+            '  (Seite muss über HTTPS oder http://localhost aufgerufen werden - siehe Doku.)';
+        });
+    });
+
+    // Läuft bei JEDEM Schließen des Dialogs (Button-Klick oder native Escape-Taste) - einziger,
+    // zentraler Aufräum- UND Melde-Ort statt Duplizierung an jeder Schließen-Stelle. Ruft den beim
+    // open() übergebenen Callback GENAU EINMAL auf, mit "null" bei Abbruch oder dem Punkte-Array bei
+    // "Übernehmen" (siehe pendingResult oben).
+    dlg.addEventListener('close', ()=>{
+      stopEverything();
+      const result = pendingResult;
+      pendingResult = null;
+      records = [];
+      renderLog();
+      logEl.classList.remove('show');
+      const cb = onCloseCb;
+      onCloseCb = null;
+      if(cb) cb(result);
+    });
+
+    function open(kind, onClose){
+      onCloseCb = onClose;
+      pendingResult = null;
+      records = [];
+      renderLog();
+      logEl.classList.remove('show');
+      setWarning(null);
+      startscreenEl.style.display = 'flex';
+      startErrEl.style.display = 'none';
+      btnStart.disabled = false;
+      btnStart.textContent = 'Kamera & Sensoren aktivieren';
+      targetLabelEl.textContent = kind === 'horizon'
+        ? 'Vermessung für: Untere Grenze (Hindernisse von unten/seitlich)'
+        : 'Vermessung für: Obere Grenze (Verdeckung von oben)';
+      startscreenTextEl.textContent = kind === 'horizon'
+        ? 'Peile mit der Rückkamera auf die höchste Kante eines Hindernisses (z. B. Hausdach, Baum) und speichere dort einen Punkt.'
+        : 'Peile mit der Rückkamera auf die Unterkante einer Verdeckung von oben (z. B. Balkondecke) und speichere dort einen Punkt.';
+      dlg.showModal();
+    }
+
+    return { open };
+  })();
+
+  function openLocationModal(mode, locationId){
+    editingLocationId = mode === 'edit' ? locationId : null;
+    const loc = mode === 'edit' ? locations.find(l=>l.id===locationId) : null;
+    const seedLoc = loc || getActiveLocation();
+    document.getElementById('locationModalTitle').textContent = mode === 'edit' ? 'Standort bearbeiten' : 'Neuer Standort';
+    document.getElementById('locName').value = loc ? loc.name : '';
+    document.getElementById('locLat').value = seedLoc ? seedLoc.lat : 52.479476;
+    document.getElementById('locLon').value = seedLoc ? seedLoc.lon : 13.329154;
+    document.getElementById('locAzStart').value = loc ? loc.azStart : 0;
+    document.getElementById('locAzEnd').value = loc ? loc.azEnd : 360;
+    clearLocProfileRows();
+    (loc ? loc.horizon : []).slice(0, MAX_PROFILE_POINTS).forEach(p=>addLocProfileRow('horizon', p.az, p.minEl, p.note));
+    (loc ? loc.ceiling : []).slice(0, MAX_PROFILE_POINTS).forEach(p=>addLocProfileRow('ceiling', p.az, p.maxEl, p.note));
+    // <dialog>.showModal() trappt Tab-Navigation automatisch innerhalb des Dialogs (kein manuelles
+    // Focus-Trapping nötig) und macht den Rest der Seite währenddessen inert.
+    document.getElementById('locationModal').showModal();
+    document.getElementById('locName').focus();
+  }
+
+  function closeLocationModal(){
+    document.getElementById('locationModal').close();
+  }
+
+  document.getElementById('newLocationBtn').addEventListener('click', ()=>openLocationModal('new'));
+  document.getElementById('editLocationBtn').addEventListener('click', ()=>{
+    if(activeLocationId) openLocationModal('edit', activeLocationId);
+  });
+  document.getElementById('locCancelBtn').addEventListener('click', closeLocationModal);
+  // Kleines X oben rechts im Fenster - hat exakt denselben Effekt wie "Abbrechen" (schließt ohne
+  // zu speichern), ruft daher dieselbe Funktion auf statt eigener Logik.
+  document.getElementById('locCloseXBtn').addEventListener('click', closeLocationModal);
+  // Bewusst KEIN Schließen per Klick auf den Hintergrund/Backdrop: Das Fenster soll ausschließlich
+  // über "Abbrechen" oder "Speichern" verlassen werden, damit ein versehentlicher Klick daneben
+  // (z.B. beim Ausfüllen der Stützpunkt-Tabelle) nicht die bisherige Eingabe verwirft.
+  document.getElementById('locAddHorizonRow').addEventListener('click', ()=>addLocProfileRow('horizon', 225, 30, ''));
+  document.getElementById('locAddCeilingRow').addEventListener('click', ()=>addLocProfileRow('ceiling', 250, 70, ''));
+
+  // Übernimmt vermessene Punkte in die passende Stützpunkt-Tabelle des Standort-Fensters (nicht
+  // direkt in "locations[]"/localStorage) - genau wie händisch hinzugefügte Zeilen werden sie erst
+  // mit "Speichern" wirklich übernommen, können also vorher noch geprüft/gelöscht/angepasst werden.
+  // Kappt an MAX_PROFILE_POINTS mit EINER zusammenfassenden Meldung, statt die Warnung von
+  // addLocProfileRow() für jeden überzähligen Punkt einzeln anzuzeigen. Öffnet das Standort-Fenster
+  // NICHT selbst wieder - das übernimmt zentral der 'close'-Listener auf #cameraModal weiter unten,
+  // und zwar für JEDEN Ausgang aus der Kamera-Ansicht (Übernehmen genauso wie Abbrechen/X/Escape) -
+  // sonst würde .showModal() hier ein zweites Mal aufgerufen und eine Exception werfen, weil das
+  // Standort-Fenster durch den 'close'-Listener zu diesem Zeitpunkt schon wieder offen ist.
+  function importSurveyedPoints(kind, points){
+    const tbody = document.getElementById(kind === 'horizon' ? 'locHorizonRows' : 'locCeilingRows');
+    const free = Math.max(0, MAX_PROFILE_POINTS - tbody.children.length);
+    const toAdd = points.slice(0, free);
+    toAdd.forEach(p=>addLocProfileRow(kind, p.az, p.el, 'vermessen'));
+    if(toAdd.length < points.length){
+      showToast(`${toAdd.length} von ${points.length} vermessenen Punkten übernommen (Obergrenze ${MAX_PROFILE_POINTS} erreicht).`);
+    } else {
+      showToast(`${toAdd.length} vermessene(r) Punkt(e) übernommen.`);
+    }
+  }
+
+  // Standort-Fenster wird bewusst geschlossen (nicht nur überlagert), bevor die Kamera-Ansicht
+  // öffnet: .close() lässt alle bisherigen Eingaben im Standort-Fenster unangetastet im DOM stehen,
+  // und die Kamera-Ansicht bekommt so den vollen Bildschirm ohne Verschachtelungsrisiko zweier
+  // gleichzeitig offener <dialog>-Elemente. Der von CameraSurvey.open() übergebene Callback wird
+  // GENAU EINMAL aufgerufen, sobald die Kamera-Ansicht (gleich welcher Ausgang: Übernehmen, X,
+  // Abbrechen im Startbildschirm, native Escape-Taste) schließt - "points" ist dabei entweder null
+  // (Abbruch) oder das Array der vermessenen Punkte (Übernehmen). Das Standort-Fenster wird in JEDEM
+  // Fall genau hier wieder geöffnet, damit der Nutzer nie "zwischen" beiden Fenstern landet.
+  document.getElementById('locSurveyHorizonBtn').addEventListener('click', ()=>{
+    document.getElementById('locationModal').close();
+    CameraSurvey.open('horizon', points=>{
+      document.getElementById('locationModal').showModal();
+      if(points) importSurveyedPoints('horizon', points);
+    });
+  });
+  document.getElementById('locSurveyCeilingBtn').addEventListener('click', ()=>{
+    document.getElementById('locationModal').close();
+    CameraSurvey.open('ceiling', points=>{
+      document.getElementById('locationModal').showModal();
+      if(points) importSurveyedPoints('ceiling', points);
+    });
+  });
+
+  document.getElementById('locSaveBtn').addEventListener('click', ()=>{
+    const name = document.getElementById('locName').value.trim();
+    const lat = parseFloat(document.getElementById('locLat').value);
+    const lon = parseFloat(document.getElementById('locLon').value);
+    const azStart = parseFloat(document.getElementById('locAzStart').value);
+    const azEnd = parseFloat(document.getElementById('locAzEnd').value);
+    if(!name){ showToast('Bitte einen Namen für den Standort angeben.'); return; }
+    if(!isFinite(lat) || !isFinite(lon)){ showToast('Bitte gültige Breite/Länge angeben.'); return; }
+    if(!isFinite(azStart) || !isFinite(azEnd) || azEnd <= azStart){ showToast('Azimut-Ende muss größer als Azimut-Start sein (z.B. 0° / 360° für Rundumsicht).'); return; }
+    const horizon = readLocProfileRows('horizon');
+    const ceiling = readLocProfileRows('ceiling');
+
+    if(editingLocationId){
+      const loc = locations.find(l=>l.id===editingLocationId);
+      Object.assign(loc, {name, lat, lon, azStart, azEnd, horizon, ceiling});
+    } else {
+      const newLoc = {
+        id: 'loc-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2,7),
+        name, lat, lon, azStart, azEnd, horizon, ceiling
+      };
+      locations.push(newLoc);
+      activeLocationId = newLoc.id;
+    }
+    saveLocations();
+    saveActiveLocationId(activeLocationId);
+    applyActiveLocation();
+    closeLocationModal();
+    showToast('Standort gespeichert.');
+  });
+
+  document.getElementById('deleteLocationBtn').addEventListener('click', ()=>{
+    if(!activeLocationId) return;
+    if(locations.length <= 1){ showToast('Mindestens ein Standort muss bestehen bleiben.'); return; }
+    const loc = getActiveLocation();
+    if(!confirm(`Standort "${loc.name}" wirklich löschen? Das kann nicht rückgängig gemacht werden.`)) return;
+    locations = locations.filter(l=>l.id !== activeLocationId);
+    activeLocationId = locations[0].id;
+    saveLocations();
+    saveActiveLocationId(activeLocationId);
+    applyActiveLocation();
+    showToast('Standort gelöscht.');
+  });
+
+  // ---------- Standorte exportieren/importieren (JSON) ----------
+  document.getElementById('exportLocationsBtn').addEventListener('click', ()=>{
+    const blob = new Blob([JSON.stringify(locations, null, 2)], {type:'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'skytracker-standorte.json';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  });
+
+  document.getElementById('importLocationsBtn').addEventListener('click', ()=>{
+    document.getElementById('importLocationsInput').click();
+  });
+  document.getElementById('importLocationsInput').addEventListener('change', (e)=>{
+    const file = e.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try{
+        const parsed = JSON.parse(reader.result);
+        if(!Array.isArray(parsed) || !parsed.length) throw new Error('Keine gültige Standortliste gefunden.');
+        // Defensive Normalisierung: fehlende/ungültige Felder werden auf sinnvolle Standardwerte
+        // gesetzt statt den Import komplett abzulehnen; Stützpunktlisten werden auf das Limit gekappt.
+        const cleaned = parsed.map((l, i) => ({
+          id: (typeof l.id === 'string' && l.id) ? l.id : ('loc-import-' + Date.now().toString(36) + '-' + i),
+          name: (typeof l.name === 'string' && l.name.trim()) ? l.name.trim() : ('Standort ' + (i+1)),
+          lat: isFinite(l.lat) ? l.lat : 52.479476,
+          lon: isFinite(l.lon) ? l.lon : 13.329154,
+          azStart: isFinite(l.azStart) ? l.azStart : 0,
+          azEnd: isFinite(l.azEnd) ? l.azEnd : 360,
+          horizon: Array.isArray(l.horizon) ? l.horizon.filter(p=>isFinite(p.az) && isFinite(p.minEl)).slice(0, MAX_PROFILE_POINTS).map(p=>({az:p.az, minEl:p.minEl, note:p.note||''})) : [],
+          ceiling: Array.isArray(l.ceiling) ? l.ceiling.filter(p=>isFinite(p.az) && isFinite(p.maxEl)).slice(0, MAX_PROFILE_POINTS).map(p=>({az:p.az, maxEl:p.maxEl, note:p.note||''})) : []
+        }));
+        locations = cleaned;
+        activeLocationId = locations[0].id;
+        saveLocations();
+        saveActiveLocationId(activeLocationId);
+        applyActiveLocation();
+        showToast(`${locations.length} Standort(e) importiert.`);
+      }catch(err){
+        showToast('Import fehlgeschlagen: ' + (err && err.message ? err.message : 'ungültige Datei.'));
+      }
+      document.getElementById('importLocationsInput').value = '';
+    };
+    reader.readAsText(file);
+  });
+
+  function maxElevationAt(az, profile){
+    // Leeres Profil = keine Verdeckung von oben bekannt -> 90° (Zenit), also unbegrenzt nach oben.
+    // Bewusst der neutrale/permissive Wert, anders als bei minElevationAt (dort bedeutet ein leeres
+    // Profil "sicherheitshalber alles blockiert" - hier wäre das Gegenteil sinnvoll).
+    if(!profile.length) return 90;
+    if(az <= profile[0].az) return profile[0].maxEl;
+    if(az >= profile[profile.length-1].az) return profile[profile.length-1].maxEl;
+    for(let i=0;i<profile.length-1;i++){
+      const p0=profile[i], p1=profile[i+1];
+      if(az>=p0.az && az<=p1.az){
+        const t = (p1.az===p0.az) ? 0 : (az-p0.az)/(p1.az-p0.az);
+        return p0.maxEl + t*(p1.maxEl-p0.maxEl);
+      }
+    }
+    return 90;
+  }
+
+  // ---------- Sicherheits-Puffer um den beobachtbaren Bereich ----------
+  // Anlass: Bei der Aufnahme von M101 (28./29.07.) traten ab 00:28 Uhr Bildartefakte auf, obwohl
+  // die damalige (grobe) lineare Interpolation der Horizont-Stützpunkte an dieser Stelle noch
+  // knapp "frei" anzeigte (der fehlende Stützpunkt wurde inzwischen ergänzt, siehe DEFAULT_HORIZON
+  // oben). Die Stützpunkte selbst sind trotzdem nie perfekt - zwischen ihnen wird weiterhin linear
+  // interpoliert, und die tatsächliche Verdeckung kann davon leicht abweichen. Statt deshalb den
+  // nutzbaren Bereich zu verkleinern (und damit knapp daneben liegende, potenziell gute Ereignisse
+  // von vornherein aus der Ergebnisliste zu verbannen), wird der aus den Stützpunkten berechnete
+  // Bereich an beiden Rändern um feste 5° nach AUSSEN erweitert ("Pufferzone"). Ereignisse in dieser
+  // Pufferzone erscheinen also weiterhin in der Ergebnistabelle, damit knapp liegende Fälle nicht
+  // versehentlich verpasst werden - im Polardiagramm ist die Pufferzone aber als eigener, dezent
+  // eingefärbter Ring um die Kernfläche erkennbar (siehe drawCompass), damit klar ist, dass es sich
+  // um eine unsichere Randzone handelt, die nicht denselben gemessenen Stützpunkten entspricht wie
+  // die Kernfläche. Die rohen, gemessenen Stützpunkte (Tabelle + Diagramm-Punkte) bleiben von der
+  // Erweiterung unangetastet.
+  const SAFETY_MARGIN_DEG = 5;
+
+  function bufferedElevationBounds(az, horizonProfile, ceilingProfile){
+    const rawMinEl = minElevationAt(az, horizonProfile);
+    const rawMaxEl = maxElevationAt(az, ceilingProfile);
+    if(rawMaxEl <= rawMinEl){
+      // Kein nutzbarer Bereich an dieser Stelle (Obergrenze liegt nicht über der Mindesthöhe) -
+      // eine Erweiterung nach außen ergäbe hier keinen Sinn, daher unverändert übernehmen.
+      return { minEl: rawMinEl, maxEl: rawMaxEl, rawMinEl, rawMaxEl };
+    }
+    return {
+      // Untere Grenze bewusst nicht bei 0° gekappt: Ist der gemessene Horizont selbst schon negativ
+      // (erhöhte Beobachtungsposition, siehe Doku), soll die Pufferzone von dort aus genauso um 5°
+      // nach außen erweitern wie überall sonst - eine Kappung bei 0° würde die Erweiterung für genau
+      // die Standorte abschneiden, für die negative Werte ursprünglich vorgesehen sind. -90° (Nadir)
+      // bleibt als theoretische Grenze bestehen.
+      minEl: Math.max(-90, rawMinEl - SAFETY_MARGIN_DEG),
+      maxEl: Math.min(90, rawMaxEl + SAFETY_MARGIN_DEG),
+      rawMinEl, rawMaxEl
+    };
+  }
+
+  // ---------- Kompass-/Horizont-Visualisierung (Polardiagramm: Zenit=Mitte, Horizont=Rand) ----------
+  let highlightedRow = null;
+
+  function setHighlight(row){
+    highlightedRow = row;
+    const infoEl = document.getElementById('highlightInfo');
+    if(row){
+      infoEl.style.display = 'block';
+      document.getElementById('highlightName').textContent = `${row.pl_name} — ${fmtBerlin(row.tMid)}`;
+    } else {
+      infoEl.style.display = 'none';
+    }
+    // Markierung der zugehörigen Tabellenzeile direkt per Klassen-Toggle aktualisieren (statt eines
+    // vollen renderTable()), damit Sortierung/Suchtext/Scroll-Position der Tabelle unangetastet bleiben.
+    // Wirkt auf die im jeweils aktiven Modus (Exoplaneten/DSO) sichtbare Tabelle.
+    const activeRows = activeRenderedRows();
+    document.querySelectorAll(`#${activeTbodyId()} tr[data-idx]`).forEach(tr=>{
+      const idx = parseInt(tr.dataset.idx, 10);
+      tr.classList.toggle('row-highlighted', activeRows[idx] === row);
+    });
+    drawCompass();
+  }
+  document.getElementById('clearHighlight').addEventListener('click', ()=>setHighlight(null));
+
+  function drawCompass(){
+    const azStart = parseFloat(document.getElementById('azStart').value);
+    const azEnd = parseFloat(document.getElementById('azEnd').value);
+    const profile = getHorizonRows();
+    const ceilingProfile = getCeilingRows();
+    const svg = document.getElementById('compassSvg');
+    if(!isFinite(azStart) || !isFinite(azEnd) || azEnd<=azStart){ svg.innerHTML=''; return; }
+
+    const cx=160, cy=160, rMax=130;
+    const rFor = el => rMax*(90-el)/90;
+    function pt(azDeg, elDeg){
+      const a = toRad(azDeg - 90);
+      const r = rFor(elDeg);
+      return [cx + r*Math.cos(a), cy + r*Math.sin(a)];
+    }
+
+    let svgContent = '';
+    [0,20,40,60,80].forEach(el=>{
+      svgContent += `<circle cx="${cx}" cy="${cy}" r="${rFor(el)}" fill="none" stroke="#2a3348" stroke-width="1"/>`;
+      svgContent += `<text x="${cx+4}" y="${cy-rFor(el)-2}" text-anchor="start">${el}°</text>`;
+    });
+    const steps = 60;
+    let bufOuterPath = '', bufInnerPath = '';
+    let coreOuterPath = '', coreInnerPath = '';
+    for(let i=0;i<=steps;i++){
+      const az = azStart + (azEnd-azStart)*i/steps;
+      const b = bufferedElevationBounds(az, profile, ceilingProfile);
+      const [xbo,ybo] = pt(az, b.minEl);
+      bufOuterPath += (i===0?'M':'L') + ` ${xbo.toFixed(1)} ${ybo.toFixed(1)} `;
+      const [xco,yco] = pt(az, b.rawMinEl);
+      coreOuterPath += (i===0?'M':'L') + ` ${xco.toFixed(1)} ${yco.toFixed(1)} `;
+    }
+    for(let i=steps;i>=0;i--){
+      const az = azStart + (azEnd-azStart)*i/steps;
+      const b = bufferedElevationBounds(az, profile, ceilingProfile);
+      const [xbi,ybi] = pt(az, b.maxEl);
+      bufInnerPath += `L ${xbi.toFixed(1)} ${ybi.toFixed(1)} `;
+      const [xci,yci] = pt(az, b.rawMaxEl);
+      coreInnerPath += `L ${xci.toFixed(1)} ${yci.toFixed(1)} `;
+    }
+    // Pufferzone (um 5° nach außen erweiterter Bereich) zuerst als dezent eingefärbter Ring in
+    // Warnfarbe zeichnen, darüber die eigentliche Kernfläche (aus den gemessenen Stützpunkten,
+    // unverändert in Blau) - so bleibt am Rand sichtbar, welcher Teil "sicher" und welcher Teil
+    // nur die erweiterte Pufferzone ist.
+    svgContent += `<path d="${bufOuterPath}${bufInnerPath}Z" fill="#f4c258" fill-opacity="0.18" stroke="#f4c258" stroke-width="1" stroke-dasharray="3 2"/>`;
+    svgContent += `<path d="${coreOuterPath}${coreInnerPath}Z" fill="#5fb3ff" fill-opacity="0.32" stroke="#5fb3ff" stroke-width="1.5"/>`;
+
+    // Bahn eines angeklickten Transits überlagern
+    if(highlightedRow && highlightedRow.path && highlightedRow.path.length){
+      let trackPath = '';
+      highlightedRow.path.forEach((p,i)=>{
+        const [x,y] = pt(p.az, p.alt);
+        trackPath += (i===0?'M':'L') + ` ${x.toFixed(1)} ${y.toFixed(1)} `;
+      });
+      svgContent += `<path d="${trackPath}" fill="none" stroke="#ff8c42" stroke-width="2.5"/>`;
+      const first = highlightedRow.path[0], last = highlightedRow.path[highlightedRow.path.length-1];
+      const [xs,ys] = pt(first.az, first.alt), [xe,ye] = pt(last.az, last.alt);
+      svgContent += `<circle cx="${xs}" cy="${ys}" r="4" fill="#7ee7c7"/>`;
+      svgContent += `<circle cx="${xe}" cy="${ye}" r="4" fill="#f2687a"/>`;
+      // Unsichtbare, breitere Hit-Flächen entlang der Bahn: beim Hovern wird die Zeit an
+      // dieser Stelle des Beobachtungsfensters angezeigt (siehe mousemove-Handler unten).
+      highlightedRow.path.forEach(p=>{
+        const [x,y] = pt(p.az, p.alt);
+        svgContent += `<circle class="path-point" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="7" `
+          + `data-az="${p.az}" data-alt="${p.alt}" data-jd="${p.jd}" `
+          + `style="fill:transparent;pointer-events:all;cursor:crosshair;"/>`;
+      });
+    }
+
+    profile.forEach(p=>{
+      const [x,y] = pt(p.az, p.minEl);
+      svgContent += `<circle class="hz-point" cx="${x}" cy="${y}" r="3" data-az="${p.az}" data-el="${p.minEl}" fill="#f4c258" style="cursor:pointer;"/>`;
+    });
+    ceilingProfile.forEach(p=>{
+      const [x,y] = pt(p.az, p.maxEl);
+      svgContent += `<circle class="clg-point" cx="${x}" cy="${y}" r="3" data-az="${p.az}" data-el="${p.maxEl}" fill="#a78bfa" style="cursor:pointer;"/>`;
+    });
+
+    const dirs = [['N',0],['O',90],['S',180],['W',270]];
+    dirs.forEach(([label,a])=>{
+      const [x,y] = pt(a, -8);
+      svgContent += `<text x="${x}" y="${y}" text-anchor="middle" dominant-baseline="middle">${label}</text>`;
+    });
+    svg.innerHTML = svgContent;
+  }
+
+  ['azStart','azEnd'].forEach(id=>document.getElementById(id).addEventListener('input', drawCompass));
+
+  // ---------- Zoom im Polardiagramm (Mausrad, zum Mauszeiger hin) ----------
+  // Rein technisch nur eine Änderung des SVG-viewBox-Attributs, unabhängig vom eigentlichen
+  // Neuzeichnen (drawCompass() setzt nur svg.innerHTML, rührt viewBox nicht an - der Zoom bleibt
+  // also auch nach einem Neuzeichnen erhalten, z.B. beim Anklicken einer Tabellenzeile). Anders als
+  // ein simples "zur Mitte zoomen" bleibt hier der Punkt unter dem Mauszeiger beim Ein-/Auszoomen
+  // fix stehen (Standard-Verhalten wie bei Karten/Diagrammen): Der Cursor-Punkt wird über die
+  // Bildschirm->SVG-Transformationsmatrix (getScreenCTM) ins aktuelle viewBox-Koordinatensystem
+  // umgerechnet, danach wird die neue viewBox so positioniert, dass genau dieser Punkt an derselben
+  // Bildschirmposition stehen bleibt.
+  const COMPASS_BASE_SIZE = 320;
+  const COMPASS_MIN_SIZE = COMPASS_BASE_SIZE / 6; // entspricht max. 6-fachem Zoom
+  let compassViewX = 0, compassViewY = 0, compassViewSize = COMPASS_BASE_SIZE;
+
+  function applyCompassZoom(){
+    const svg = document.getElementById('compassSvg');
+    svg.setAttribute('viewBox', `${compassViewX.toFixed(2)} ${compassViewY.toFixed(2)} ${compassViewSize.toFixed(2)} ${compassViewSize.toFixed(2)}`);
+  }
+
+  // Wandelt Bildschirmkoordinaten (clientX/clientY eines Mausevents) in die aktuellen
+  // viewBox-Koordinaten des SVG um - berücksichtigt dabei automatisch Position, Skalierung und
+  // die aktuell gesetzte viewBox des Elements.
+  function compassPointFromEvent(svg, evt){
+    const ctm = svg.getScreenCTM();
+    if(!ctm) return null;
+    const pt = svg.createSVGPoint();
+    pt.x = evt.clientX;
+    pt.y = evt.clientY;
+    return pt.matrixTransform(ctm.inverse());
+  }
+
+  const compassWheelEl = document.getElementById('compassSvg');
+  compassWheelEl.addEventListener('wheel', (e)=>{
+    e.preventDefault();
+    const zoomFactor = 1.15;
+    let newSize = compassViewSize;
+    if(e.deltaY < 0){
+      newSize = Math.max(COMPASS_MIN_SIZE, compassViewSize / zoomFactor);
+    } else if(e.deltaY > 0){
+      newSize = Math.min(COMPASS_BASE_SIZE, compassViewSize * zoomFactor);
+    }
+    const cursorPt = compassPointFromEvent(compassWheelEl, e);
+    if(cursorPt){
+      // Der Punkt unter dem Cursor (in aktuellen viewBox-Koordinaten) soll nach der Größenänderung
+      // an derselben Stelle bleiben - daher die neue viewBox-Ecke passend zu diesem Fixpunkt
+      // verschieben statt einfach zentriert zu skalieren.
+      const ratio = newSize / compassViewSize;
+      compassViewX = cursorPt.x - (cursorPt.x - compassViewX) * ratio;
+      compassViewY = cursorPt.y - (cursorPt.y - compassViewY) * ratio;
+    }
+    compassViewSize = newSize;
+    // Verhindert, dass beim Herauszoomen/Verschieben der sichtbare Ausschnitt komplett am
+    // eigentlichen Diagramm (Koordinatenraum 0..320) vorbeiwandert: der Mittelpunkt des aktuell
+    // sichtbaren Bereichs wird auf diesen Bereich geklemmt.
+    let centerX = Math.min(COMPASS_BASE_SIZE, Math.max(0, compassViewX + compassViewSize/2));
+    let centerY = Math.min(COMPASS_BASE_SIZE, Math.max(0, compassViewY + compassViewSize/2));
+    compassViewX = centerX - compassViewSize/2;
+    compassViewY = centerY - compassViewSize/2;
+    applyCompassZoom();
+  }, { passive: false });
+  compassWheelEl.addEventListener('dblclick', ()=>{
+    compassViewX = 0; compassViewY = 0; compassViewSize = COMPASS_BASE_SIZE;
+    applyCompassZoom();
+  });
+
+  // Hover-Tooltip für Stützpunkte (Event-Delegation, überlebt Neuzeichnen)
+  const compassSvgEl = document.getElementById('compassSvg');
+  const compassTooltipEl = document.getElementById('compassTooltip');
+  compassSvgEl.addEventListener('mousemove', (e)=>{
+    const t = e.target;
+    if(t.classList && t.classList.contains('hz-point')){
+      compassTooltipEl.style.display = 'block';
+      compassTooltipEl.style.left = (e.clientX + 12) + 'px';
+      compassTooltipEl.style.top = (e.clientY + 12) + 'px';
+      compassTooltipEl.textContent = `Azimut: ${parseFloat(t.dataset.az).toFixed(0)}°, Mindesthöhe: ${parseFloat(t.dataset.el).toFixed(0)}°`;
+    } else if(t.classList && t.classList.contains('clg-point')){
+      compassTooltipEl.style.display = 'block';
+      compassTooltipEl.style.left = (e.clientX + 12) + 'px';
+      compassTooltipEl.style.top = (e.clientY + 12) + 'px';
+      compassTooltipEl.textContent = `Azimut: ${parseFloat(t.dataset.az).toFixed(0)}°, Obergrenze: ${parseFloat(t.dataset.el).toFixed(0)}°`;
+    } else if(t.classList && t.classList.contains('path-point')){
+      compassTooltipEl.style.display = 'block';
+      compassTooltipEl.style.left = (e.clientX + 12) + 'px';
+      compassTooltipEl.style.top = (e.clientY + 12) + 'px';
+      const jd = parseFloat(t.dataset.jd);
+      let elapsedStr = '';
+      if(highlightedRow && isFinite(highlightedRow.winStart)){
+        const elapsedMin = Math.round((jd - highlightedRow.winStart) * 24 * 60);
+        elapsedStr = ` (+${elapsedMin} Min. seit Fensterbeginn)`;
+      }
+      const nameStr = highlightedRow ? `${highlightedRow.pl_name} — ` : '';
+      compassTooltipEl.textContent = `${nameStr}Zeit: ${fmtBerlin(jd)}${elapsedStr} — Azimut: ${parseFloat(t.dataset.az).toFixed(0)}°, Höhe: ${parseFloat(t.dataset.alt).toFixed(0)}°`;
+    } else {
+      compassTooltipEl.style.display = 'none';
+    }
+  });
+  compassSvgEl.addEventListener('mouseleave', ()=>{ compassTooltipEl.style.display = 'none'; });
+
+  // Klick auf die Bahn (eine der unsichtbaren Hit-Flächen entlang der Trajektorie) springt zur
+  // zugehörigen Zeile in der Ergebnistabelle.
+  compassSvgEl.addEventListener('click', (e)=>{
+    const t = e.target;
+    if(t.classList && t.classList.contains('path-point') && highlightedRow){
+      const idx = activeRenderedRows().indexOf(highlightedRow);
+      if(idx >= 0){
+        const tr = document.querySelector(`#${activeTbodyId()} tr[data-idx="${idx}"]`);
+        if(tr) tr.scrollIntoView({behavior:'smooth', block:'center'});
+      }
+    }
+  });
+
+  // ---------- Hauptberechnung ----------
+  let allRows = [];
+
+  function fmtBerlin(jd){
+    const d = dateFromJd(jd);
+    return d.toLocaleString('de-DE', {timeZone:'Europe/Berlin', day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit'});
+  }
+
+  function fmtDurationMin(totalMin){
+    const h = Math.floor(totalMin / 60);
+    const m = totalMin % 60;
+    return h > 0 ? `${h} h ${m} min` : `${m} min`;
+  }
+
+  function compute(){
+    const lat = parseFloat(document.getElementById('lat').value);
+    const lon = parseFloat(document.getElementById('lon').value);
+    const azStart = parseFloat(document.getElementById('azStart').value);
+    const azEnd = parseFloat(document.getElementById('azEnd').value);
+    const horizonProfile = getHorizonRows();
+    const ceilingProfile = getCeilingRows();
+    const lowestPossibleMinEl = horizonProfile.length ? Math.min(...horizonProfile.map(p=>p.minEl)) : 90;
+    const startStr = document.getElementById('startDate').value;
+    const daysAhead = parseInt(document.getElementById('daysAhead').value, 10) || 30;
+    const twilight = parseFloat(document.getElementById('twilight').value);
+    const maxMag = parseFloat(document.getElementById('maxMag').value);
+    const minDepthPct = parseFloat(document.getElementById('minDepth').value);
+    const maxExposureH = parseFloat(document.getElementById('maxExposure').value);
+    const bufferMinInput = parseFloat(document.getElementById('bufferMin').value);
+    const hideUnknownMag = document.getElementById('hideUnknownMag').checked;
+    const hideUnknownDepth = document.getElementById('hideUnknownDepth').checked;
+
+    const startJD = jdFromDate(new Date(startStr + 'T00:00:00Z'));
+    const endJD = startJD + daysAhead;
+
+    const results = [];
+    setHighlight(null);
+
+    for(const row of rawData){
+      const period = parseFloat(row.pl_orbper);
+      const tranmid = parseFloat(row.pl_tranmid);
+      const durH = parseFloat(row.pl_trandur);
+      const ra = parseFloat(row.ra);
+      const dec = parseFloat(row.dec);
+      if(!isFinite(period) || period<=0 || !isFinite(tranmid) || !isFinite(durH) || durH<=0 || !isFinite(ra) || !isFinite(dec)) continue;
+
+      // parseFloat('') und parseFloat(undefined) ergeben NaN, nicht null - deshalb hier explizit
+      // auf isFinite prüfen und auf null normalisieren. Ohne das würde ein leeres/unlesbares Feld
+      // (z.B. bei einer per Hand hochgeladenen, leicht kaputten CSV) als NaN durchrutschen und in
+      // der Tabelle später wörtlich "NaN" statt "–" anzeigen bzw. Sortierung/Filter verfälschen.
+      const vmagRaw = parseFloat(row.sy_vmag);
+      const vmag = isFinite(vmagRaw) ? vmagRaw : null;
+      const depthPctRaw = parseFloat(row.pl_trandep);
+      const depthPct = isFinite(depthPctRaw) ? depthPctRaw : null;
+
+      if(vmag !== null && vmag > maxMag) continue;
+      if(vmag === null && hideUnknownMag) continue;
+      if(depthPct !== null && depthPct < minDepthPct) continue;
+      if(depthPct === null && hideUnknownDepth) continue;
+
+      const maxPossibleAlt = 90 - Math.abs(lat - dec);
+      if(maxPossibleAlt < lowestPossibleMinEl) continue;
+
+      const durDays = durH / 24;
+      if(durH > maxExposureH) continue;
+
+      const bufferH = Math.min(bufferMinInput/60, Math.max(0, (maxExposureH - durH)/2));
+      const constellation = findConstellation(ra, dec);
+
+      const nStart = Math.floor((startJD - tranmid)/period) - 1;
+      const nEnd = Math.ceil((endJD - tranmid)/period) + 1;
+
+      for(let n=nStart; n<=nEnd; n++){
+        const tMid = tranmid + n*period;
+        if(tMid < startJD || tMid > endJD) continue;
+
+        const winStart = tMid - durDays/2 - bufferH/24;
+        const winEnd = tMid + durDays/2 + bufferH/24;
+        const coreStart = tMid - durDays/2;
+        const coreEnd = tMid + durDays/2;
+
+        const stepMin = 10;
+        const nSteps = Math.max(2, Math.round((winEnd-winStart)*24*60/stepMin));
+        let minAlt=999, maxAlt=-999;
+        let fullWindowOk = true, coreOk = true;
+        const path = [];
+        for(let s=0; s<=nSteps; s++){
+          const jd = winStart + (winEnd-winStart)*s/nSteps;
+          const pos = altAz(jd, ra, dec, lat, lon);
+          const sAlt = sunAltitude(jd, lat, lon);
+          const inAzWindow = pos.az >= azStart && pos.az <= azEnd;
+          const bufBounds = inAzWindow ? bufferedElevationBounds(pos.az, horizonProfile, ceilingProfile) : {minEl:90, maxEl:90};
+          const localMinEl = bufBounds.minEl;
+          const localMaxEl = bufBounds.maxEl;
+          const geomOk = inAzWindow && pos.alt >= localMinEl && pos.alt <= localMaxEl && sAlt <= twilight;
+          if(pos.alt < minAlt) minAlt = pos.alt;
+          if(pos.alt > maxAlt) maxAlt = pos.alt;
+          if(!geomOk) fullWindowOk = false;
+          if(jd >= coreStart && jd <= coreEnd && !geomOk) coreOk = false;
+          path.push({az: pos.az, alt: pos.alt, jd});
+        }
+        const azStartPos = altAz(coreStart, ra, dec, lat, lon).az;
+        const azEndPos = altAz(coreEnd, ra, dec, lat, lon).az;
+
+        // Nicht beobachtbare Events werden gar nicht erst in die Ergebnisliste aufgenommen (das Tool
+        // soll nur tatsächlich sinnvolle Beobachtungsziele auflisten, keine langen "nicht beobachtbar"-
+        // Listen produzieren).
+        if(!coreOk) continue;
+
+        let status, statusClass;
+        if(fullWindowOk){ status='vollständig (inkl. Rand)'; statusClass='good'; }
+        else { status='Transit sichtbar, Rand eingeschränkt'; statusClass='warn'; }
+
+        results.push({
+          pl_name: row.pl_name,
+          hostname: row.hostname,
+          ra, dec, constellation,
+          sy_vmag: vmag,
+          depthPct: depthPct,
+          durH: durH,
+          tMid: tMid,
+          winStart, winEnd,
+          minAlt, maxAlt,
+          // Bewusst NICHT "azStart"/"azEnd" genannt (Namenskollision mit den gleichnamigen
+          // Sichtfenster-Grenzen weiter oben in compute() - dort ist es die feste Azimut-Grenze
+          // des Balkonfensters, hier die tatsächliche Azimutposition des Objekts zu Beginn/Ende
+          // des Kern-Transits; zwei völlig unterschiedliche Werte, die versehentlich fast gleich
+          // benannt waren).
+          transitAzStart: azStartPos, transitAzEnd: azEndPos,
+          status, statusClass,
+          path,
+          dateStr: dateFromJd(tMid).toISOString().slice(0,10)
+        });
+      }
+    }
+
+    results.sort((a,b)=>a.tMid - b.tMid);
+    allRows = results;
+    renderTable();
+    renderSummary(results, lat, lon);
+  }
+
+  function renderSummary(results, lat, lon){
+    const good = results.filter(r=>r.statusClass==='good').length;
+    const warn = results.filter(r=>r.statusClass==='warn').length;
+    document.getElementById('summary').innerHTML =
+      `${rawData.length} Planeten in der Datenbasis geprüft. ` +
+      `<strong>${good}</strong> vollständig im Sichtfenster beobachtbar, ` +
+      `<strong>${warn}</strong> mit eingeschränktem Vor-/Nachlauf. ` +
+      `Standort: ${lat.toFixed(4)}°N, ${lon.toFixed(4)}°O.`;
+  }
+
+  // ---------- Deep-Sky-Objekte: Berechnung ----------
+  // Anders als bei Exoplaneten gibt es bei DSOs kein diskretes "Transit-Ereignis" - sie ziehen
+  // jede Nacht dieselbe Bahn über den Himmel. Die Frage ist daher pro Nacht: Steht das Objekt
+  // gleichzeitig (a) im Sichtfenster (Azimut-Grenzen + Horizont-/Obergrenzenprofil, exakt dieselbe
+  // Geometrie wie bei den Exoplaneten) UND (b) am dunklen Himmel? Pro Nacht wird der längste
+  // zusammenhängende Zeitraum gesucht, der beide Bedingungen erfüllt; über alle Nächte im
+  // gewählten Zeitraum wird gezählt, an wie vielen das überhaupt der Fall ist, und die Nacht mit
+  // dem längsten Fenster als "beste Nacht" für die Bahn-Anzeige im Diagramm gemerkt.
+  let allRowsDso = [];
+
+  function computeDso(){
+    const lat = parseFloat(document.getElementById('lat').value);
+    const lon = parseFloat(document.getElementById('lon').value);
+    const azStart = parseFloat(document.getElementById('azStart').value);
+    const azEnd = parseFloat(document.getElementById('azEnd').value);
+    const horizonProfile = getHorizonRows();
+    const ceilingProfile = getCeilingRows();
+    const lowestPossibleMinEl = horizonProfile.length ? Math.min(...horizonProfile.map(p=>p.minEl)) : 90;
+    const startStr = document.getElementById('startDate').value;
+    const daysAhead = parseInt(document.getElementById('daysAhead').value, 10) || 30;
+    const twilight = parseFloat(document.getElementById('twilight').value);
+
+    const dsoMaxMag = parseFloat(document.getElementById('dsoMaxMag').value);
+    const dsoMinSize = parseFloat(document.getElementById('dsoMinSize').value);
+    const catGalaxies = document.getElementById('dsoCatGalaxies').checked;
+    const catClusters = document.getElementById('dsoCatClusters').checked;
+    const catNebulae = document.getElementById('dsoCatNebulae').checked;
+    const messierOnly = document.getElementById('dsoMessierOnly').checked;
+
+    const allowedTypes = new Set();
+    if(catGalaxies) DSO_GALAXY_TYPES.forEach(t=>allowedTypes.add(t));
+    if(catClusters) DSO_CLUSTER_TYPES.forEach(t=>allowedTypes.add(t));
+    if(catNebulae) DSO_NEBULA_TYPES.forEach(t=>allowedTypes.add(t));
+
+    const startJD = jdFromDate(new Date(startStr + 'T00:00:00Z'));
+
+    const results = [];
+    setHighlight(null);
+
+    for(const obj of DSO_CATALOG){
+      if(!allowedTypes.has(obj.type)) continue;
+      if(messierOnly && !obj.messier) continue;
+      if(isFinite(dsoMaxMag) && obj.mag !== null && obj.mag > dsoMaxMag) continue;
+      if(isFinite(dsoMinSize) && obj.size !== null && obj.size < dsoMinSize) continue;
+
+      const maxPossibleAlt = 90 - Math.abs(lat - obj.dec);
+      if(maxPossibleAlt < lowestPossibleMinEl) continue;
+
+      let nightsObservable = 0;
+      let bestRun = null; // {start,end,dur,maxAlt,path,dateStr}
+
+      for(let d=0; d<daysAhead; d++){
+        // Fenster von 12:00 UTC an Tag d bis 12:00 UTC an Tag d+1: liegt für Berlin (UTC+1/+2)
+        // sicher komplett um Mitternacht herum, egal ob Sommer- oder Winterzeit - so wird die
+        // Nacht nie an der UTC-Tagesgrenze in zwei Hälften zerschnitten.
+        const winJdStart = startJD + d + 0.5;
+        const winJdEnd = winJdStart + 1;
+        const stepMin = 15;
+        const nSteps = Math.round((winJdEnd - winJdStart) * 24 * 60 / stepMin);
+
+        let curStart = null, curMaxAlt = -999, curPath = [];
+        let nightBest = null;
+
+        function closeRun(endJd){
+          if(curStart === null) return;
+          const dur = endJd - curStart;
+          if(!nightBest || dur > nightBest.dur){
+            nightBest = { start: curStart, end: endJd, dur, maxAlt: curMaxAlt, path: curPath };
+          }
+          curStart = null; curMaxAlt = -999; curPath = [];
+        }
+
+        for(let s=0; s<=nSteps; s++){
+          const jd = winJdStart + (winJdEnd - winJdStart) * s / nSteps;
+          const pos = altAz(jd, obj.ra, obj.dec, lat, lon);
+          const sAlt = sunAltitude(jd, lat, lon);
+          const inAzWindow = pos.az >= azStart && pos.az <= azEnd;
+          const bufBounds = inAzWindow ? bufferedElevationBounds(pos.az, horizonProfile, ceilingProfile) : {minEl:90, maxEl:90};
+          const localMinEl = bufBounds.minEl;
+          const localMaxEl = bufBounds.maxEl;
+          const geomOk = inAzWindow && pos.alt >= localMinEl && pos.alt <= localMaxEl && sAlt <= twilight;
+          if(geomOk){
+            if(curStart === null) curStart = jd;
+            if(pos.alt > curMaxAlt) curMaxAlt = pos.alt;
+            curPath.push({ az: pos.az, alt: pos.alt, jd });
+          } else {
+            closeRun(jd);
+          }
+        }
+        closeRun(winJdEnd);
+
+        // Mindestens 10 Minuten zusammenhängend sichtbar, damit eine Nacht als "beobachtbar" zählt
+        // (verhindert, dass ein einzelner Rand-Sample-Punkt schon als Treffer gilt).
+        if(nightBest && nightBest.dur * 24 * 60 >= 10){
+          nightsObservable++;
+          if(!bestRun || nightBest.dur > bestRun.dur){
+            bestRun = { ...nightBest, dateStr: dateFromJd(winJdStart).toISOString().slice(0,10) };
+          }
+        }
+      }
+
+      if(nightsObservable === 0) continue;
+
+      const displayName = obj.common ? `${obj.name} (${obj.common})` : obj.name;
+      results.push({
+        pl_name: displayName,
+        hostname: obj.catalogRef || obj.name,
+        ra: obj.ra, dec: obj.dec,
+        constellation: constellationFullName(obj.constAbbr),
+        type: obj.type,
+        typeLabel: DSO_TYPE_LABELS[obj.type] || obj.type,
+        mag: obj.mag,
+        size: obj.size,
+        nightsObservable, totalNights: daysAhead,
+        tMid: (bestRun.start + bestRun.end) / 2,
+        winStart: bestRun.start,
+        winEnd: bestRun.end,
+        maxWindowMin: Math.round(bestRun.dur * 24 * 60),
+        maxAlt: bestRun.maxAlt,
+        bestDateStr: bestRun.dateStr,
+        path: bestRun.path,
+        messier: obj.messier
+      });
+    }
+
+    results.sort((a,b)=>b.nightsObservable - a.nightsObservable);
+    allRowsDso = results;
+    renderTableDso();
+    renderSummaryDso(results, lat, lon);
+  }
+
+  function renderSummaryDso(results, lat, lon){
+    const messierCount = results.filter(r=>r.messier).length;
+    document.getElementById('summary').innerHTML =
+      `${DSO_CATALOG.length} Deep-Sky-Objekte im eingebetteten Katalog geprüft. ` +
+      `<strong>${results.length}</strong> davon in mindestens einer Nacht im Zeitraum beobachtbar ` +
+      `(davon <strong>${messierCount}</strong> Messier-Objekte). ` +
+      `Standort: ${lat.toFixed(4)}°N, ${lon.toFixed(4)}°O.`;
+  }
+
+  // Rechnet RA/Dec (Grad) in einen J2000-Einheitsvektor um - das Koordinatenformat, das
+  // Stellariums Remote-Control-API für direkte Positionsangaben erwartet (Parameter "position"
+  // bei /api/main/focus bzw. "j2000" bei /api/main/view).
+  //
+  // Bewusst KEINE Namenssuche mehr (frühere Versionen schickten "target=WASP-3 b" bzw. als
+  // Fallback "target=WASP-3"): schwache Wirtssterne wie WASP-3 sind oft gar nicht in
+  // Stellariums Standard-Sternkatalog enthalten (der deckt nur die helleren Sterne ab) und
+  // werden daher auch namentlich nicht gefunden - unabhängig vom Exoplaneten-Plug-in. Mit
+  // direkten Koordinaten funktioniert das Zentrieren der Ansicht dagegen immer, ganz ohne
+  // Katalog- oder Plug-in-Abhängigkeit. Da der Transit direkt vor dem Wirtsstern stattfindet,
+  // sind Planeten- und Sternposition ohnehin identisch - "immer auf den Wirtsstern".
+  function j2000Vector(raDeg, decDeg){
+    const raR = raDeg*Math.PI/180, decR = decDeg*Math.PI/180;
+    return [Math.cos(decR)*Math.cos(raR), Math.cos(decR)*Math.sin(raR), Math.sin(decR)];
+  }
+
+  // Baut ein kurzes Stellarium-Skript (Qt-Script, über /api/scripts/direct ausgeführt), das
+  // eine sichtbare Markierung (Kreuz) exakt an den RA/Dec-Koordinaten setzt - unabhängig davon,
+  // ob Stellarium dort ein katalogisiertes Objekt kennt. MarkerMgr ist Teil des Stellarium-Kerns
+  // (kein zusätzliches Plug-in nötig). RA/Dec werden als reine Dezimalgrad-Strings übergeben,
+  // das erkennt StelUtils::getDecAngle() korrekt. Alte Markierungen werden vorher entfernt,
+  // damit sich bei mehreren Klicks keine Kreuze ansammeln; die neue Markierung bleibt dauerhaft
+  // (kein Auto-Delete) sichtbar, bis die nächste gesetzt oder in Stellarium manuell gelöscht wird.
+  function markerScript(ra, dec){
+    const raStr = JSON.stringify(String(ra));
+    const decStr = JSON.stringify(String(dec));
+    return `MarkerMgr.deleteAllMarkers(); MarkerMgr.markerEquatorial(${raStr}, ${decStr}, true, true, "cross", "#ffd23f", 10, false);`;
+  }
+
+  // Sendet drei Befehle an Stellarium: Simulationszeit auf den Fensterbeginn setzen
+  // (/api/main/time), die Ansicht auf die Wirtsstern-Koordinaten zentrieren (/api/main/focus mit
+  // "position" statt "target") und eine sichtbare Markierung an denselben Koordinaten setzen
+  // (/api/scripts/direct, MarkerMgr). Alle drei bewusst im no-cors-Modus: Da wir keine
+  // Namenssuche mehr machen (siehe oben), gibt es kein "gefunden/nicht gefunden" mehr zu lesen -
+  // Position und Markierung wirken unabhängig davon, ob die Antwort auslesbar ist. Damit ist
+  // "Enable CORS for the following" für dieses Tool nicht erforderlich (siehe Doku-Seite für die
+  // Sicherheitseinordnung dieser Einstellung). Ein echter Verbindungsfehler (Server nicht
+  // aktiviert, Stellarium läuft nicht) lässt den fetch()-Aufruf trotzdem fehlschlagen und wird
+  // sauber gemeldet.
+  function stellariumFocus(hostname, ra, dec, winStartJD){
+    showToast(`Sende an Stellarium: „${hostname}“ (Wirtsstern-Position, Markierung, Fensterbeginn) …`);
+    const position = j2000Vector(ra, dec);
+    const commonOpts = { method:'POST', mode:'no-cors', headers:{'Content-Type':'application/x-www-form-urlencoded'} };
+    const calls = [
+      { label: 'Zeit', promise: fetch('http://localhost:8090/api/main/time', {
+        ...commonOpts, body: 'time=' + encodeURIComponent(winStartJD)
+      }) },
+      { label: 'Ansicht', promise: fetch('http://localhost:8090/api/main/focus', {
+        ...commonOpts, body: 'position=' + encodeURIComponent(JSON.stringify(position)) + '&mode=center'
+      }) },
+      { label: 'Markierung', promise: fetch('http://localhost:8090/api/scripts/direct', {
+        ...commonOpts, body: 'code=' + encodeURIComponent(markerScript(ra, dec))
+      }) }
+    ];
+    // Bewusst Promise.allSettled statt Promise.all: Bei drei unabhängigen Befehlen soll ein
+    // einzelner Fehlschlag (z.B. /api/scripts/direct in einer älteren Stellarium-Version ohne
+    // Skript-Unterstützung) nicht pauschal als "Verbindung fehlgeschlagen" gemeldet werden, wenn
+    // Zeit und Ansicht tatsächlich angekommen sind - sonst würde ein Teilerfolg fälschlich wie ein
+    // Totalausfall aussehen.
+    Promise.allSettled(calls.map(c => c.promise)).then((outcomes) => {
+      const failed = outcomes
+        .map((o, i) => ({ label: calls[i].label, ok: o.status === 'fulfilled' }))
+        .filter(r => !r.ok)
+        .map(r => r.label);
+      if(failed.length === 0){
+        showToast(`An Stellarium gesendet: Zeit auf Fensterbeginn (${fmtBerlin(winStartJD)}) gestellt, Ansicht auf Wirtsstern „${hostname}“ zentriert und mit einem Kreuz markiert. Erfolg lässt sich technisch nicht auslesen – bitte in Stellarium direkt prüfen.`);
+      } else if(failed.length < calls.length){
+        showToast(`Teilweise an Stellarium gesendet (fehlgeschlagen: ${failed.join(', ')}). Möglicherweise unterstützt Ihre Stellarium-Version diesen Befehl nicht, oder die Verbindung wurde zwischendurch unterbrochen.`);
+      } else {
+        showToast(`Verbindung zu Stellarium fehlgeschlagen. Läuft Stellarium, und ist unter Configuration Window → Plugins → Remote Control → Configure „Server enabled“ aktiviert?`);
+      }
+    });
+  }
+
+  function eventLinks(r){
+    const nasaUrl = `https://exoplanetarchive.ipac.caltech.edu/overview/${encodeURIComponent(r.hostname)}`;
+    return `<a href="${nasaUrl}" target="_blank">NASA&nbsp;↗</a><a href="#" class="stellarium-link" data-name="${escapeHtml(r.hostname)}" data-ra="${r.ra}" data-dec="${r.dec}" data-winstart="${r.winStart}">Stellarium&nbsp;↗</a>`;
+  }
+
+  let sortKey = 'tmid', sortAsc = true;
+  document.querySelectorAll('#resultsTable thead th[data-key]').forEach(th=>{
+    th.addEventListener('click', ()=>{
+      const key = th.getAttribute('data-key');
+      if(sortKey === key) sortAsc = !sortAsc; else { sortKey = key; sortAsc = true; }
+      renderTable();
+    });
+  });
+  document.getElementById('searchBox').addEventListener('input', renderTable);
+
+  let currentRenderedRows = [];
+
+  function renderTable(){
+    const q = document.getElementById('searchBox').value.trim().toLowerCase();
+    let rows = allRows.filter(r => !q || r.pl_name.toLowerCase().includes(q) || (r.hostname||'').toLowerCase().includes(q));
+
+    const keyFn = {
+      tmid: r=>r.tMid,
+      pl_name: r=>r.pl_name,
+      constellation: r=>r.constellation,
+      sy_vmag: r=>r.sy_vmag===null?999:r.sy_vmag,
+      depth: r=>r.depthPct===null?-1:r.depthPct,
+      durH: r=>r.durH,
+      window: r=>r.winStart,
+      altRange: r=>r.minAlt,
+      azRange: r=>r.transitAzStart,
+      status: r=>r.status
+    }[sortKey] || (r=>r.tMid);
+    rows = rows.slice().sort((a,b)=>{
+      const va=keyFn(a), vb=keyFn(b);
+      if(va<vb) return sortAsc?-1:1;
+      if(va>vb) return sortAsc?1:-1;
+      return 0;
+    });
+    currentRenderedRows = rows;
+
+    const varSearchUrl = 'https://var.astro.cz/en/Exoplanets';
+    const tbody = document.getElementById('resultsBody');
+    tbody.innerHTML = rows.map((r,idx)=>`
+      <tr data-idx="${idx}" class="${r===highlightedRow?'row-highlighted':''}">
+        <td><a href="${varSearchUrl}" target="_blank" title="Suche auf var.astro.cz nach ${escapeHtml(r.pl_name)}"><strong>${escapeHtml(r.pl_name)}</strong></a><div class="small">${escapeHtml(r.hostname||'')}</div></td>
+        <td>${escapeHtml(r.constellation.replace(/\s*\([^)]*\)\s*$/, ''))}</td>
+        <td>${r.sy_vmag===null?'&ndash;':r.sy_vmag.toFixed(1)}</td>
+        <td>${r.depthPct===null?'&ndash;':r.depthPct.toFixed(2)+'%'}</td>
+        <td>${r.durH.toFixed(2)} h</td>
+        <td>${fmtBerlin(r.winStart)}<br>&ndash; ${fmtBerlin(r.winEnd)}</td>
+        <td>${r.minAlt.toFixed(0)}&deg;&ndash;${r.maxAlt.toFixed(0)}&deg;</td>
+        <td>${r.transitAzStart.toFixed(0)}&deg;&rarr;${r.transitAzEnd.toFixed(0)}&deg;</td>
+        <td class="status-cell"><span class="badge ${r.statusClass}">${r.status}</span></td>
+        <td class="links">${eventLinks(r)}</td>
+      </tr>
+    `).join('');
+    document.getElementById('rowCount').textContent = rows.length + ' Ergebnisse';
+  }
+
+  // Ein delegierter Click-Handler, wiederverwendet für beide Ergebnistabellen (Exoplaneten und
+  // DSO): Stellarium-Links, normale Links (var.astro.cz/NASA, navigieren normal), und Klick auf
+  // die Zeile selbst (zeigt Bahn im Diagramm bzw. hebt die Markierung wieder auf).
+  function makeRowClickHandler(getRenderedRows){
+    return (e)=>{
+      const stellariumLink = e.target.closest('.stellarium-link');
+      if(stellariumLink){
+        e.preventDefault();
+        stellariumFocus(
+          stellariumLink.dataset.name,
+          parseFloat(stellariumLink.dataset.ra),
+          parseFloat(stellariumLink.dataset.dec),
+          parseFloat(stellariumLink.dataset.winstart)
+        );
+        return;
+      }
+      if(e.target.closest('a')) return; // var.astro.cz / NASA normal navigieren lassen
+      const tr = e.target.closest('tr[data-idx]');
+      if(tr){
+        const idx = parseInt(tr.dataset.idx, 10);
+        const row = getRenderedRows()[idx];
+        if(row){
+          if(row === highlightedRow){
+            // Gleiche Zeile erneut angeklickt -> Markierung aufheben (kein Scroll, da Diagramm ja
+            // schon sichtbar ist).
+            setHighlight(null);
+          } else {
+            setHighlight(row);
+            document.getElementById('compassSvg').scrollIntoView({behavior:'smooth', block:'center'});
+          }
+        }
+      }
+    };
+  }
+  document.getElementById('resultsBody').addEventListener('click', makeRowClickHandler(()=>currentRenderedRows));
+  document.getElementById('resultsBodyDso').addEventListener('click', makeRowClickHandler(()=>currentRenderedRowsDso));
+
+  // ---------- Deep-Sky-Objekte: Tabelle & Bedienung ----------
+  function eventLinksDso(r){
+    const wikiUrl = `https://de.wikipedia.org/wiki/Spezial:Suche?search=${encodeURIComponent(r.pl_name)}`;
+    return `<a href="${wikiUrl}" target="_blank">Wikipedia&nbsp;↗</a><a href="#" class="stellarium-link" data-name="${escapeHtml(r.hostname)}" data-ra="${r.ra}" data-dec="${r.dec}" data-winstart="${r.winStart}">Stellarium&nbsp;↗</a>`;
+  }
+
+  let sortKeyDso = 'nights', sortAscDso = false;
+  document.querySelectorAll('#resultsTableDso thead th[data-key]').forEach(th=>{
+    th.addEventListener('click', ()=>{
+      const key = th.getAttribute('data-key');
+      if(sortKeyDso === key) sortAscDso = !sortAscDso; else { sortKeyDso = key; sortAscDso = true; }
+      renderTableDso();
+    });
+  });
+  document.getElementById('searchBoxDso').addEventListener('input', renderTableDso);
+  document.getElementById('computeDsoBtn').addEventListener('click', computeDso);
+
+  let currentRenderedRowsDso = [];
+
+  function renderTableDso(){
+    const q = document.getElementById('searchBoxDso').value.trim().toLowerCase();
+    let rows = allRowsDso.filter(r => !q || r.pl_name.toLowerCase().includes(q));
+
+    const keyFn = {
+      name: r=>r.pl_name,
+      typeLabel: r=>r.typeLabel,
+      constellation: r=>r.constellation,
+      mag: r=>r.mag===null?999:r.mag,
+      size: r=>r.size===null?-1:r.size,
+      nights: r=>r.nightsObservable,
+      maxWindow: r=>r.maxWindowMin,
+      tmid: r=>r.tMid
+    }[sortKeyDso] || (r=>r.nightsObservable);
+    rows = rows.slice().sort((a,b)=>{
+      const va=keyFn(a), vb=keyFn(b);
+      if(va<vb) return sortAscDso?-1:1;
+      if(va>vb) return sortAscDso?1:-1;
+      return 0;
+    });
+    currentRenderedRowsDso = rows;
+
+    const tbody = document.getElementById('resultsBodyDso');
+    tbody.innerHTML = rows.map((r,idx)=>`
+      <tr data-idx="${idx}" class="${r===highlightedRow?'row-highlighted':''}">
+        <td><strong>${escapeHtml(r.pl_name)}</strong></td>
+        <td>${escapeHtml(r.typeLabel)}</td>
+        <td>${escapeHtml(r.constellation)}</td>
+        <td>${r.mag===null?'&ndash;':r.mag.toFixed(1)}</td>
+        <td>${r.size===null?'&ndash;':r.size.toFixed(1)+"'"}</td>
+        <td>${r.nightsObservable} / ${r.totalNights}</td>
+        <td>${fmtDurationMin(r.maxWindowMin)}</td>
+        <td>${fmtBerlin(r.winStart)}<br>&ndash; ${fmtBerlin(r.winEnd)}<br><span class="small">max. ${r.maxAlt.toFixed(0)}&deg;</span></td>
+        <td class="links">${eventLinksDso(r)}</td>
+      </tr>
+    `).join('');
+    document.getElementById('rowCountDso').textContent = rows.length + ' Ergebnisse';
+  }
+
+  // ---------- Init ----------
+  document.getElementById('startDate').value = new Date().toISOString().slice(0,10);
+  rebuildLocationTiles();
+  applyActiveLocationFields();
+  drawCompass();
+})();
+</script>
+
+</body>
+</html>
