@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Skytracker_BP17 – Version V2.17 -->
+<!-- Skytracker_BP17 – Version V2.18 -->
 <html lang="de">
 <head>
 <meta charset="UTF-8">
@@ -86,6 +86,10 @@
   tbody tr:hover{ background:rgba(255,255,255,0.03); }
   tbody tr.row-highlighted{ background:rgba(95,179,255,0.16); }
   tbody tr.row-highlighted:hover{ background:rgba(95,179,255,0.22); }
+  /* Nächte ohne Sichtbarkeitsfenster in der DSO-Nacht-für-Nacht-Tabelle: nicht anklickbar (siehe
+     resultsBodyDsoNights-Click-Handler im Script), daher optisch als inaktiv markiert. */
+  tbody tr.row-unobservable{ cursor:default; color:var(--muted); }
+  tbody tr.row-unobservable:hover{ background:transparent; }
   .tablewrap{ max-height:640px; overflow:auto; border:1px solid var(--border); border-radius:8px; }
   .badge{ display:inline-block; padding:2px 8px; border-radius:10px; font-size:0.74rem; font-weight:700; white-space:normal; line-height:1.3; text-align:center; }
   .badge.good{ background:rgba(126,231,199,0.15); color:var(--good); }
@@ -247,11 +251,15 @@
           <button type="button" id="newLocationBtn" class="secondary" style="padding:6px 12px; font-size:0.8rem;">+ Neuer Standort</button>
           <button type="button" id="editLocationBtn" class="secondary" style="padding:6px 12px; font-size:0.8rem;">Bearbeiten</button>
           <button type="button" id="deleteLocationBtn" class="secondary" style="padding:6px 12px; font-size:0.8rem;">Löschen</button>
-          <button type="button" id="exportLocationsBtn" class="secondary" style="padding:6px 12px; font-size:0.8rem;">Standorte exportieren</button>
-          <button type="button" id="importLocationsBtn" class="secondary" style="padding:6px 12px; font-size:0.8rem;">Standorte importieren</button>
+          <button type="button" id="importLocationsBtn" class="secondary" style="padding:6px 12px; font-size:0.8rem;">Standorte import.</button>
           <input type="file" id="importLocationsInput" accept=".json,application/json" style="display:none;">
         </div>
-        <div class="field-row">
+        <!-- Breite/Länge werden hier bewusst nicht mehr angezeigt (auf Wunsch entfernt) - die Felder
+             bleiben unsichtbar im DOM bestehen, weil drawCompass()/compute()/computeDso() ihre Werte
+             weiterhin per getElementById('lat'/'lon').value lesen; die Werte selbst kommen nach wie vor
+             aus dem aktiven Standort (siehe applyActiveLocationFields()) und sind über "Bearbeiten"
+             änderbar. -->
+        <div class="field-row" style="display:none;">
           <div class="field"><label>Breite (Lat, &deg;N)</label><input type="number" id="lat" value="52.479476" step="0.0001" readonly></div>
           <div class="field"><label>Länge (Lon, &deg;O)</label><input type="number" id="lon" value="13.329154" step="0.0001" readonly></div>
         </div>
@@ -264,7 +272,6 @@
           <div class="field"><label>Azimut-Start (&deg;, harte Grenze)</label><input type="number" id="azStart" value="180" min="0" max="360" readonly></div>
           <div class="field"><label>Azimut-Ende (&deg;, harte Grenze)</label><input type="number" id="azEnd" value="313" min="0" max="360" readonly></div>
         </div>
-        <p class="small" id="locStuetzpunkteInfo" style="margin:4px 0 12px;"></p>
         <div class="compass-wrap" style="margin-top:14px; flex-direction:column; gap:4px;">
           <svg id="compassSvg" width="320" height="320" viewBox="0 0 320 320"></svg>
           <p class="small" style="margin:0;">Mit dem Mausrad zum Mauszeiger hin zoomen (hoch = rein, runter = raus); Doppelklick setzt den Zoom zurück.</p>
@@ -398,12 +405,33 @@
     </div>
   </div>
 
+  <div class="card" id="resultsCardDsoNights" style="display:none;">
+    <h2>Nächte für <span id="dsoNightsTitle"></span></h2>
+    <div class="toolbar">
+      <button type="button" id="dsoNightsBackBtn" class="secondary">&larr; Zurück</button>
+      <span class="count-pill" id="dsoNightsCount">0 Nächte</span>
+    </div>
+    <div class="tablewrap">
+      <table id="resultsTableDsoNights">
+        <thead>
+          <tr>
+            <th title="Kalenderdatum, an dem die jeweilige Nacht beginnt">Nacht</th>
+            <th title="Zeitfenster, in dem das Objekt gleichzeitig im Sichtfenster und am dunklen Himmel steht">Zeitfenster</th>
+            <th title="Länge des zusammenhängenden Sichtbarkeitsfensters">Dauer</th>
+            <th title="Maximal erreichte Höhe während des Fensters">Max. Höhe</th>
+          </tr>
+        </thead>
+        <tbody id="resultsBodyDsoNights"></tbody>
+      </table>
+    </div>
+  </div>
+
 </main>
 
 <div class="docview" id="docView" style="display:none;">
   <button type="button" id="backToPlannerBtn" style="margin:20px 0 10px;">&larr; Zurück zum Planer</button>
 
-  <p class="small">Version: V2.17</p>
+  <p class="small">Version: V2.18</p>
   <h2>Überblick</h2>
   <p>
     Dieses Tool findet Himmelsobjekte, die mit einem Linsenteleskop (432&nbsp;mm Brennweite, 72&nbsp;mm
@@ -425,8 +453,10 @@
     öffnet ein Fenster zum Anlegen, „Bearbeiten“ das gleiche Fenster für den aktuell gewählten
     Standort, „Löschen“ entfernt ihn (mindestens ein Standort
     bleibt immer bestehen). Standorte werden im Browser gespeichert und bleiben so über einen Neustart
-    des Tools hinweg erhalten; „Standorte exportieren“/„Standorte importieren“ sichern sie zusätzlich als
-    JSON-Datei, z.&nbsp;B. um sie auf einen anderen Rechner zu übertragen. Je Standort sind maximal 30
+    des Tools hinweg erhalten; „Standort exportieren“ im Bearbeiten-Fenster sichert den gerade
+    geöffneten Standort einzeln als JSON-Datei, z.&nbsp;B. um ihn auf einen anderen Rechner zu
+    übertragen &ndash; „Standorte import.“ liest eine solche Datei (oder eine mit mehreren Standorten)
+    wieder ein. Je Standort sind maximal 30
     Stützpunkte pro Grenze (unten/oben) möglich, um Diagramm und Tabelle übersichtlich zu halten.
     Ein Wechsel des Standorts leert die aktuelle Ergebnistabelle (die Daten galten für den vorherigen
     Standort) &ndash; „Daten laden“/„Neu berechnen“ bzw. „Deep-Sky-Objekte berechnen“ danach erneut
@@ -590,6 +620,12 @@
     <dt>Beste Nacht</dt>
     <dd>Die Nacht mit dem längsten zusammenhängenden Sichtbarkeitsfenster; wird auch für die Bahn-Anzeige im
       Polardiagramm verwendet.</dd>
+    <dt>Zeile anklicken</dt>
+    <dd>Zeigt zunächst die Bahn der besten Nacht im Polardiagramm unter Abschnitt 1 und öffnet dann eine
+      Tabelle mit jeder einzelnen Nacht im gewählten Zeitraum für dieses Objekt (Zeitfenster, Dauer,
+      maximal erreichte Höhe; Nächte ohne Sichtbarkeitsfenster sind als „nicht beobachtbar“ markiert).
+      Ein Klick auf eine Nacht darin zeigt deren eigene Bahn im Diagramm; „&larr; Zurück“ am Kopf dieser
+      Tabelle kehrt zur Objektliste zurück.</dd>
   </dl>
 
   <h2>Methodik &amp; Einschränkungen</h2>
@@ -670,9 +706,12 @@
   <button type="button" id="locAddCeilingRow" class="secondary" style="padding:6px 12px; font-size:0.8rem;">+ Stützpunkt hinzufügen (oben)</button><!--
   --><button type="button" id="locSurveyCeilingBtn" class="secondary" style="padding:6px 12px; font-size:0.8rem; margin-left:3pt;">Vermessen</button>
 
-  <div style="display:flex; gap:8px; margin-top:22px; justify-content:flex-end;">
-    <button type="button" id="locCancelBtn" class="secondary">Abbrechen</button>
-    <button type="button" id="locSaveBtn">Speichern</button>
+  <div style="display:flex; gap:8px; margin-top:22px; align-items:center;">
+    <button type="button" id="locExportBtn" class="secondary" style="display:none;">Standort exportieren</button>
+    <div style="display:flex; gap:8px; margin-left:auto;">
+      <button type="button" id="locCancelBtn" class="secondary">Abbrechen</button>
+      <button type="button" id="locSaveBtn">Speichern</button>
+    </div>
   </div>
 </dialog>
 
@@ -773,10 +812,23 @@
   // wechseln. "highlightedRow" und die zugehörige Bahn-Anzeige sind bewusst generisch gehalten
   // (pl_name/tMid/winStart/path funktionieren für Exoplaneten- wie DSO-Zeilen gleichermaßen).
   let currentMode = 'exo'; // 'exo' | 'dso'
-  function activeTbodyId(){ return currentMode === 'exo' ? 'resultsBody' : 'resultsBodyDso'; }
-  function activeRenderedRows(){ return currentMode === 'exo' ? currentRenderedRows : currentRenderedRowsDso; }
+  // dsoNightsViewOpen: innerhalb des DSO-Modus zeigt entweder die Objekttabelle ODER (nach Klick auf
+  // ein Objekt) die Nacht-für-Nacht-Tabelle für genau dieses eine Objekt - siehe openDsoNightsView()/
+  // closeDsoNightsView() weiter unten.
+  let dsoNightsViewOpen = false;
+  function activeTbodyId(){
+    if(currentMode === 'exo') return 'resultsBody';
+    return dsoNightsViewOpen ? 'resultsBodyDsoNights' : 'resultsBodyDso';
+  }
+  function activeRenderedRows(){
+    if(currentMode === 'exo') return currentRenderedRows;
+    return dsoNightsViewOpen ? currentRenderedRowsDsoNights : currentRenderedRowsDso;
+  }
 
   function setMode(mode){
+    // Nacht-für-Nacht-Ansicht beim Moduswechsel immer zurücksetzen - sie gehört zu einem einzelnen
+    // DSO-Objekt und darf nicht stehen bleiben, wenn zwischendurch zu Exoplaneten gewechselt wird.
+    closeDsoNightsView();
     currentMode = mode;
     document.getElementById('modeExoBtn').classList.toggle('secondary', mode !== 'exo');
     document.getElementById('modeDsoBtn').classList.toggle('secondary', mode !== 'dso');
@@ -1693,7 +1745,7 @@
   function saveLocations(){
     try{ localStorage.setItem(LOCATION_STORAGE_KEY, JSON.stringify(locations)); }
     catch(e){
-      showToast('Hinweis: Standorte konnten nicht dauerhaft gespeichert werden (Browser-Speicher nicht verfügbar) - „Standorte exportieren“ nutzen, um sie zu sichern.');
+      showToast('Hinweis: Standorte konnten nicht dauerhaft gespeichert werden (Browser-Speicher nicht verfügbar) - „Standort exportieren“ (im Bearbeiten-Fenster) nutzen, um sie zu sichern.');
     }
   }
 
@@ -1758,6 +1810,8 @@
     currentRenderedRowsDso = [];
     document.getElementById('resultsBodyDso').innerHTML = '';
     document.getElementById('rowCountDso').textContent = '0 Ergebnisse';
+    lastDsoComputeParams = null;
+    closeDsoNightsView();
     document.getElementById('summary').innerHTML = 'Standort geändert – bitte Daten neu laden bzw. neu berechnen.';
   }
 
@@ -1768,8 +1822,6 @@
     document.getElementById('lon').value = loc.lon;
     document.getElementById('azStart').value = loc.azStart;
     document.getElementById('azEnd').value = loc.azEnd;
-    document.getElementById('locStuetzpunkteInfo').textContent =
-      `${loc.horizon.length} Stützpunkt(e) unten, ${loc.ceiling.length} oben – über „Bearbeiten“ anpassbar.`;
   }
 
   function applyActiveLocation(){
@@ -2151,6 +2203,10 @@
     const loc = mode === 'edit' ? locations.find(l=>l.id===locationId) : null;
     const seedLoc = loc || getActiveLocation();
     document.getElementById('locationModalTitle').textContent = mode === 'edit' ? 'Standort bearbeiten' : 'Neuer Standort';
+    // "Standort exportieren" exportiert genau den gerade bearbeiteten Standort (inkl. seiner ID) als
+    // JSON - ergibt beim Anlegen eines noch ungespeicherten neuen Standorts keinen Sinn, daher nur im
+    // Bearbeiten-Modus sichtbar.
+    document.getElementById('locExportBtn').style.display = mode === 'edit' ? '' : 'none';
     document.getElementById('locName').value = loc ? loc.name : '';
     document.getElementById('locLat').value = seedLoc ? seedLoc.lat : 52.479476;
     document.getElementById('locLon').value = seedLoc ? seedLoc.lon : 13.329154;
@@ -2270,17 +2326,37 @@
     showToast('Standort gelöscht.');
   });
 
-  // ---------- Standorte exportieren/importieren (JSON) ----------
-  document.getElementById('exportLocationsBtn').addEventListener('click', ()=>{
-    const blob = new Blob([JSON.stringify(locations, null, 2)], {type:'application/json'});
+  // ---------- Standort exportieren / Standorte importieren (JSON) ----------
+  // Exportiert NUR den gerade im Bearbeiten-Fenster geöffneten Standort (nicht alle) - als Array mit
+  // einem Eintrag, damit die Datei mit demselben Import-Weg unten wieder eingelesen werden kann. Nutzt
+  // bewusst die aktuellen Formularwerte (nicht den zuletzt gespeicherten Stand aus locations[]), damit
+  // auch noch ungespeicherte Änderungen mit exportiert werden.
+  document.getElementById('locExportBtn').addEventListener('click', ()=>{
+    const name = document.getElementById('locName').value.trim() || 'Standort';
+    const lat = parseFloat(document.getElementById('locLat').value);
+    const lon = parseFloat(document.getElementById('locLon').value);
+    const azStart = parseFloat(document.getElementById('locAzStart').value);
+    const azEnd = parseFloat(document.getElementById('locAzEnd').value);
+    if(!isFinite(lat) || !isFinite(lon) || !isFinite(azStart) || !isFinite(azEnd)){
+      showToast('Bitte zuerst gültige Werte eingeben, bevor der Standort exportiert wird.');
+      return;
+    }
+    const horizon = readLocProfileRows('horizon');
+    const ceiling = readLocProfileRows('ceiling');
+    const exportObj = [{
+      id: editingLocationId || ('loc-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2,7)),
+      name, lat, lon, azStart, azEnd, horizon, ceiling
+    }];
+    const blob = new Blob([JSON.stringify(exportObj, null, 2)], {type:'application/json'});
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'skytracker-standorte.json';
+    a.download = `skytracker-standort-${name.replace(/[^a-z0-9_-]+/gi, '_')}.json`;
     document.body.appendChild(a);
     a.click();
     a.remove();
     URL.revokeObjectURL(url);
+    showToast('Standort exportiert.');
   });
 
   document.getElementById('importLocationsBtn').addEventListener('click', ()=>{
@@ -2757,6 +2833,81 @@
   // gewählten Zeitraum wird gezählt, an wie vielen das überhaupt der Fall ist, und die Nacht mit
   // dem längsten Fenster als "beste Nacht" für die Bahn-Anzeige im Diagramm gemerkt.
   let allRowsDso = [];
+  // Schnappschuss der Standort-/Zeitraum-/Dunkelheits-Parameter des letzten "Deep-Sky-Objekte
+  // berechnen"-Laufs - wird beim Öffnen der Nacht-für-Nacht-Ansicht (siehe openDsoNightsView())
+  // wiederverwendet, damit die dort gezeigten Nächte exakt zu den Zahlen in der Objekttabelle passen,
+  // auch wenn der Nutzer Standort/Zeitraum danach schon wieder geändert, aber noch nicht neu
+  // berechnet hat.
+  let lastDsoComputeParams = null;
+
+  // Simuliert für EIN Objekt (nur ra/dec nötig, kein voller Katalogeintrag) jede einzelne Nacht im
+  // Zeitraum und liefert pro Nacht das beste zusammenhängende Sichtbarkeitsfenster zurück (oder
+  // observable:false, falls keins mindestens 10 Minuten erreicht). Von computeDso() (dort für jedes
+  // Objekt im Katalog) und von openDsoNightsView() (dort für ein einzelnes, bereits gefundenes Objekt)
+  // gemeinsam genutzt, damit beide Stellen exakt dieselbe Geometrie/Dunkelheits-Logik verwenden.
+  function computeNightlyRunsForTarget(ra, dec, params){
+    const { lat, lon, azStart, azEnd, horizonProfile, ceilingProfile, twilight, startJD, daysAhead } = params;
+    const nights = [];
+
+    for(let d=0; d<daysAhead; d++){
+      // Fenster von 12:00 UTC an Tag d bis 12:00 UTC an Tag d+1: liegt für Berlin (UTC+1/+2)
+      // sicher komplett um Mitternacht herum, egal ob Sommer- oder Winterzeit - so wird die
+      // Nacht nie an der UTC-Tagesgrenze in zwei Hälften zerschnitten.
+      const winJdStart = startJD + d + 0.5;
+      const winJdEnd = winJdStart + 1;
+      const stepMin = 15;
+      const nSteps = Math.round((winJdEnd - winJdStart) * 24 * 60 / stepMin);
+
+      let curStart = null, curMaxAlt = -999, curPath = [];
+      let nightBest = null;
+
+      function closeRun(endJd){
+        if(curStart === null) return;
+        const dur = endJd - curStart;
+        if(!nightBest || dur > nightBest.dur){
+          nightBest = { start: curStart, end: endJd, dur, maxAlt: curMaxAlt, path: curPath };
+        }
+        curStart = null; curMaxAlt = -999; curPath = [];
+      }
+
+      for(let s=0; s<=nSteps; s++){
+        const jd = winJdStart + (winJdEnd - winJdStart) * s / nSteps;
+        const pos = altAz(jd, ra, dec, lat, lon);
+        const sAlt = sunAltitude(jd, lat, lon);
+        const inAzWindow = pos.az >= azStart && pos.az <= azEnd;
+        const bufBounds = inAzWindow ? bufferedElevationBounds(pos.az, horizonProfile, ceilingProfile) : {minEl:90, maxEl:90};
+        const localMinEl = bufBounds.minEl;
+        const localMaxEl = bufBounds.maxEl;
+        const geomOk = inAzWindow && pos.alt >= localMinEl && pos.alt <= localMaxEl && sAlt <= twilight;
+        if(geomOk){
+          if(curStart === null) curStart = jd;
+          if(pos.alt > curMaxAlt) curMaxAlt = pos.alt;
+          curPath.push({ az: pos.az, alt: pos.alt, jd });
+        } else {
+          closeRun(jd);
+        }
+      }
+      closeRun(winJdEnd);
+
+      const dateStr = dateFromJd(winJdStart).toISOString().slice(0,10);
+      // Mindestens 10 Minuten zusammenhängend sichtbar, damit eine Nacht als "beobachtbar" zählt
+      // (verhindert, dass ein einzelner Rand-Sample-Punkt schon als Treffer gilt).
+      const observable = !!(nightBest && nightBest.dur * 24 * 60 >= 10);
+      nights.push(observable ? {
+        dateStr, observable: true,
+        winStart: nightBest.start, winEnd: nightBest.end,
+        tMid: (nightBest.start + nightBest.end) / 2,
+        durMin: Math.round(nightBest.dur * 24 * 60),
+        maxAlt: nightBest.maxAlt,
+        path: nightBest.path
+      } : {
+        dateStr, observable: false,
+        winStart: null, winEnd: null, tMid: null, durMin: 0, maxAlt: null, path: []
+      });
+    }
+
+    return nights;
+  }
 
   function computeDso(){
     const lat = parseFloat(document.getElementById('lat').value);
@@ -2783,9 +2934,12 @@
     if(catNebulae) DSO_NEBULA_TYPES.forEach(t=>allowedTypes.add(t));
 
     const startJD = jdFromDate(new Date(startStr + 'T00:00:00Z'));
+    const params = { lat, lon, azStart, azEnd, horizonProfile, ceilingProfile, twilight, startJD, daysAhead };
+    lastDsoComputeParams = params;
 
     const results = [];
     setHighlight(null);
+    closeDsoNightsView();
 
     for(const obj of DSO_CATALOG){
       if(!allowedTypes.has(obj.type)) continue;
@@ -2796,60 +2950,11 @@
       const maxPossibleAlt = 90 - Math.abs(lat - obj.dec);
       if(maxPossibleAlt < lowestPossibleMinEl) continue;
 
-      let nightsObservable = 0;
-      let bestRun = null; // {start,end,dur,maxAlt,path,dateStr}
-
-      for(let d=0; d<daysAhead; d++){
-        // Fenster von 12:00 UTC an Tag d bis 12:00 UTC an Tag d+1: liegt für Berlin (UTC+1/+2)
-        // sicher komplett um Mitternacht herum, egal ob Sommer- oder Winterzeit - so wird die
-        // Nacht nie an der UTC-Tagesgrenze in zwei Hälften zerschnitten.
-        const winJdStart = startJD + d + 0.5;
-        const winJdEnd = winJdStart + 1;
-        const stepMin = 15;
-        const nSteps = Math.round((winJdEnd - winJdStart) * 24 * 60 / stepMin);
-
-        let curStart = null, curMaxAlt = -999, curPath = [];
-        let nightBest = null;
-
-        function closeRun(endJd){
-          if(curStart === null) return;
-          const dur = endJd - curStart;
-          if(!nightBest || dur > nightBest.dur){
-            nightBest = { start: curStart, end: endJd, dur, maxAlt: curMaxAlt, path: curPath };
-          }
-          curStart = null; curMaxAlt = -999; curPath = [];
-        }
-
-        for(let s=0; s<=nSteps; s++){
-          const jd = winJdStart + (winJdEnd - winJdStart) * s / nSteps;
-          const pos = altAz(jd, obj.ra, obj.dec, lat, lon);
-          const sAlt = sunAltitude(jd, lat, lon);
-          const inAzWindow = pos.az >= azStart && pos.az <= azEnd;
-          const bufBounds = inAzWindow ? bufferedElevationBounds(pos.az, horizonProfile, ceilingProfile) : {minEl:90, maxEl:90};
-          const localMinEl = bufBounds.minEl;
-          const localMaxEl = bufBounds.maxEl;
-          const geomOk = inAzWindow && pos.alt >= localMinEl && pos.alt <= localMaxEl && sAlt <= twilight;
-          if(geomOk){
-            if(curStart === null) curStart = jd;
-            if(pos.alt > curMaxAlt) curMaxAlt = pos.alt;
-            curPath.push({ az: pos.az, alt: pos.alt, jd });
-          } else {
-            closeRun(jd);
-          }
-        }
-        closeRun(winJdEnd);
-
-        // Mindestens 10 Minuten zusammenhängend sichtbar, damit eine Nacht als "beobachtbar" zählt
-        // (verhindert, dass ein einzelner Rand-Sample-Punkt schon als Treffer gilt).
-        if(nightBest && nightBest.dur * 24 * 60 >= 10){
-          nightsObservable++;
-          if(!bestRun || nightBest.dur > bestRun.dur){
-            bestRun = { ...nightBest, dateStr: dateFromJd(winJdStart).toISOString().slice(0,10) };
-          }
-        }
-      }
-
-      if(nightsObservable === 0) continue;
+      const nights = computeNightlyRunsForTarget(obj.ra, obj.dec, params);
+      const observableNights = nights.filter(n=>n.observable);
+      if(!observableNights.length) continue;
+      const nightsObservable = observableNights.length;
+      const bestRun = observableNights.reduce((best,n)=> (!best || n.durMin > best.durMin) ? n : best, null);
 
       const displayName = obj.common ? `${obj.name} (${obj.common})` : obj.name;
       results.push({
@@ -2862,10 +2967,10 @@
         mag: obj.mag,
         size: obj.size,
         nightsObservable, totalNights: daysAhead,
-        tMid: (bestRun.start + bestRun.end) / 2,
-        winStart: bestRun.start,
-        winEnd: bestRun.end,
-        maxWindowMin: Math.round(bestRun.dur * 24 * 60),
+        tMid: bestRun.tMid,
+        winStart: bestRun.winStart,
+        winEnd: bestRun.winEnd,
+        maxWindowMin: bestRun.durMin,
         maxAlt: bestRun.maxAlt,
         bestDateStr: bestRun.dateStr,
         path: bestRun.path,
@@ -3057,7 +3162,31 @@
     };
   }
   document.getElementById('resultsBody').addEventListener('click', makeRowClickHandler(()=>currentRenderedRows));
-  document.getElementById('resultsBodyDso').addEventListener('click', makeRowClickHandler(()=>currentRenderedRowsDso));
+
+  // Eigener Click-Handler für die DSO-Objekttabelle statt makeRowClickHandler(): ein Klick auf eine
+  // Objekt-Zeile öffnet zusätzlich zur Bahn-Anzeige die Nacht-für-Nacht-Ansicht für genau dieses
+  // Objekt (siehe openDsoNightsView() weiter unten) - Stellarium-/Wikipedia-Links funktionieren wie
+  // gewohnt weiter, "erneutes Anklicken hebt Markierung auf" entfällt hier bewusst (die Objekttabelle
+  // ist nach dem ersten Klick ohnehin nicht mehr sichtbar).
+  document.getElementById('resultsBodyDso').addEventListener('click', (e)=>{
+    const stellariumLink = e.target.closest('.stellarium-link');
+    if(stellariumLink){
+      e.preventDefault();
+      stellariumFocus(
+        stellariumLink.dataset.name,
+        parseFloat(stellariumLink.dataset.ra),
+        parseFloat(stellariumLink.dataset.dec),
+        parseFloat(stellariumLink.dataset.winstart)
+      );
+      return;
+    }
+    if(e.target.closest('a')) return; // var.astro.cz / NASA / Wikipedia normal navigieren lassen
+    const tr = e.target.closest('tr[data-idx]');
+    if(!tr) return;
+    const idx = parseInt(tr.dataset.idx, 10);
+    const row = currentRenderedRowsDso[idx];
+    if(row) openDsoNightsView(row);
+  });
 
   // ---------- Deep-Sky-Objekte: Tabelle & Bedienung ----------
   function eventLinksDso(r){
@@ -3116,6 +3245,80 @@
     `).join('');
     document.getElementById('rowCountDso').textContent = rows.length + ' Ergebnisse';
   }
+
+  // ---------- Deep-Sky-Objekte: Nacht-für-Nacht-Ansicht ----------
+  // Ersetzt beim Anklicken eines Objekts die Objekttabelle durch eine Tabelle mit jeder einzelnen
+  // Nacht im gewählten Zeitraum (Zeitfenster/Dauer/max. Höhe an diesem Standort); "Zurück" kehrt zur
+  // Objekttabelle zurück. currentRenderedRowsDsoNights/dsoNightsViewOpen siehe activeTbodyId()/
+  // activeRenderedRows() weiter oben - darüber bleibt setHighlight()'s Zeilen-Markierung auch hier
+  // korrekt.
+  let currentRenderedRowsDsoNights = [];
+
+  function renderDsoNightsTable(){
+    const tbody = document.getElementById('resultsBodyDsoNights');
+    const rows = currentRenderedRowsDsoNights;
+    tbody.innerHTML = rows.map((r,idx)=>{
+      const dateLabel = new Date(r.dateStr + 'T00:00:00Z')
+        .toLocaleDateString('de-DE', {timeZone:'UTC', day:'2-digit', month:'2-digit', year:'numeric'});
+      if(!r.observable){
+        return `<tr data-idx="${idx}" class="row-unobservable"><td>${dateLabel}</td><td colspan="3" class="small">nicht beobachtbar</td></tr>`;
+      }
+      return `<tr data-idx="${idx}" class="${r===highlightedRow?'row-highlighted':''}">
+        <td>${dateLabel}</td>
+        <td>${fmtBerlin(r.winStart)}<br>&ndash; ${fmtBerlin(r.winEnd)}</td>
+        <td>${fmtDurationMin(r.durMin)}</td>
+        <td>${r.maxAlt.toFixed(0)}&deg;</td>
+      </tr>`;
+    }).join('');
+    const observableCount = rows.filter(r=>r.observable).length;
+    document.getElementById('dsoNightsCount').textContent = `${observableCount} von ${rows.length} Nächten beobachtbar`;
+  }
+
+  function openDsoNightsView(row){
+    // Sollte durch computeDso() (setzt lastDsoComputeParams bei jedem Lauf) eigentlich nie fehlen,
+    // wenn eine Objekt-Zeile überhaupt anklickbar ist - defensiv trotzdem abgesichert.
+    if(!lastDsoComputeParams) return;
+    // WICHTIG: setHighlight() hier aufrufen, SOLANGE dsoNightsViewOpen noch false ist - so markiert
+    // es die richtige Zeile in der (noch sichtbaren) Objekttabelle #resultsBodyDso, nicht die erst
+    // gleich befüllte Nächte-Tabelle (siehe activeTbodyId()/activeRenderedRows() oben).
+    setHighlight(row);
+    document.getElementById('dsoNightsTitle').textContent = row.pl_name;
+    currentRenderedRowsDsoNights = computeNightlyRunsForTarget(row.ra, row.dec, lastDsoComputeParams)
+      .map(n => ({ ...n, pl_name: row.pl_name }));
+    dsoNightsViewOpen = true;
+    renderDsoNightsTable();
+    document.getElementById('resultsCardDso').style.display = 'none';
+    document.getElementById('resultsCardDsoNights').style.display = '';
+    document.getElementById('compassSvg').scrollIntoView({behavior:'smooth', block:'center'});
+  }
+
+  function closeDsoNightsView(){
+    dsoNightsViewOpen = false;
+    currentRenderedRowsDsoNights = [];
+    document.getElementById('resultsCardDsoNights').style.display = 'none';
+    // Nur wirksam, solange ohnehin der DSO-Modus aktiv ist - im Exoplaneten-Modus setzt setMode()
+    // die Sichtbarkeit von #resultsCardDso im Anschluss direkt wieder korrekt auf "none".
+    document.getElementById('resultsCardDso').style.display = '';
+  }
+
+  document.getElementById('dsoNightsBackBtn').addEventListener('click', closeDsoNightsView);
+
+  // Klick auf eine Nacht in der Nächte-Tabelle zeigt deren Bahn im Diagramm (bzw. hebt die Markierung
+  // wieder auf, wenn dieselbe Nacht erneut angeklickt wird) - analog zum Verhalten der Objekt-/
+  // Exoplaneten-Tabellen. Nicht beobachtbare Nächte (leeres Fenster) sind bewusst nicht anklickbar.
+  document.getElementById('resultsBodyDsoNights').addEventListener('click', (e)=>{
+    const tr = e.target.closest('tr[data-idx]');
+    if(!tr) return;
+    const idx = parseInt(tr.dataset.idx, 10);
+    const row = currentRenderedRowsDsoNights[idx];
+    if(!row || !row.observable) return;
+    if(row === highlightedRow){
+      setHighlight(null);
+    } else {
+      setHighlight(row);
+      document.getElementById('compassSvg').scrollIntoView({behavior:'smooth', block:'center'});
+    }
+  });
 
   // ---------- Init ----------
   document.getElementById('startDate').value = new Date().toISOString().slice(0,10);
