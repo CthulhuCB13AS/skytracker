@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Skytracker_BP17 – Version V2.18 -->
+<!-- Skytracker_BP17 – Version V2.22 -->
 <html lang="de">
 <head>
 <meta charset="UTF-8">
@@ -64,6 +64,12 @@
   }
   button.secondary{ background:var(--panel2); color:var(--text); border:1px solid var(--border); }
   button:disabled{ opacity:0.45; cursor:not-allowed; }
+  /* "Astro"-Link im Header optisch wie einen button.secondary behandeln, obwohl es technisch ein <a>
+     ist (verlinkt nach außen, statt eine interne Ansicht umzuschalten wie "Doku"). */
+  header a.secondary{
+    background:var(--panel2); color:var(--text); border:1px solid var(--border); border-radius:8px;
+    padding:10px 18px; font-size:0.92rem; font-weight:600; text-decoration:none; display:inline-block;
+  }
   #status{ font-size:0.85rem; color:var(--muted); margin-top:10px; min-height:1.2em; }
   #fallback{ display:none; margin-top:14px; padding:14px; background:var(--panel2); border-radius:8px; border:1px dashed var(--border); font-size:0.85rem; }
   #fallback a{ color:var(--accent); word-break:break-all; }
@@ -100,6 +106,11 @@
   .links{ display:flex; flex-direction:column; gap:3px; }
   .links a{ color:var(--accent); text-decoration:none; font-size:0.76rem; }
   .links a:hover{ text-decoration:underline; }
+  /* Name-Link in der ersten Spalte der Exoplaneten-Ergebnistabelle: ohne diese Regel fällt er auf die
+     Browser-Standardfarbe für Links zurück (dunkles Blau/Lila), die auf dem dunklen Panel-Hintergrund
+     kaum lesbar ist. */
+  .result-name-link{ color:var(--accent); text-decoration:none; }
+  .result-name-link:hover{ text-decoration:underline; }
   .toolbar{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:12px; }
   .toolbar input[type=text]{ background:var(--panel2); border:1px solid var(--border); color:var(--text); border-radius:7px; padding:7px 10px; font-size:0.85rem; }
   code{ background:var(--panel2); padding:1px 5px; border-radius:4px; font-size:0.85em; }
@@ -229,7 +240,10 @@
 
 <header>
   <h1>🔭 Skytracker</h1>
-  <button type="button" id="showDocBtn">Doku</button>
+  <div style="display:flex; gap:8px;">
+    <a href="https://cthulhucb13as.github.io/astro" target="_blank" rel="noopener" class="secondary" id="astroLinkBtn">Astro</a>
+    <button type="button" id="showDocBtn">Doku</button>
+  </div>
 </header>
 
 <main id="plannerView">
@@ -253,7 +267,12 @@
           <button type="button" id="deleteLocationBtn" class="secondary" style="padding:6px 12px; font-size:0.8rem;">Löschen</button>
           <button type="button" id="importLocationsBtn" class="secondary" style="padding:6px 12px; font-size:0.8rem;">Standorte import.</button>
           <input type="file" id="importLocationsInput" accept=".json,application/json" style="display:none;">
+          <button type="button" id="githubLoadBtn" class="secondary" style="padding:6px 12px; font-size:0.8rem;" title="Lädt standorte.json aus demselben Ordner wie diese Seite (GitHub Pages/lokaler Server) und ersetzt die aktuelle Liste damit.">Von GitHub laden</button>
+          <button type="button" id="githubExportBtn" class="secondary" style="padding:6px 12px; font-size:0.8rem;" title="Exportiert ALLE Standorte als standorte.json, zum Hochladen in den GitHub-Pages-Ordner (siehe Doku).">Für GitHub exportieren</button>
+          <button type="button" id="githubPushBtn" class="secondary" style="padding:6px 12px; font-size:0.8rem;" title="Sendet ALLE Standorte automatisch über den Sync-Worker nach GitHub (Einrichtung: siehe 'Sync-Einstellungen' und Doku).">Jetzt zu GitHub senden</button>
+          <button type="button" id="githubSyncSettingsBtn" class="secondary" style="padding:6px 12px; font-size:0.8rem;">Sync-Einstellungen</button>
         </div>
+        <p class="small" id="githubSyncHint" style="display:none; margin:-6px 0 12px;"></p>
         <!-- Breite/Länge werden hier bewusst nicht mehr angezeigt (auf Wunsch entfernt) - die Felder
              bleiben unsichtbar im DOM bestehen, weil drawCompass()/compute()/computeDso() ihre Werte
              weiterhin per getElementById('lat'/'lon').value lesen; die Werte selbst kommen nach wie vor
@@ -431,7 +450,7 @@
 <div class="docview" id="docView" style="display:none;">
   <button type="button" id="backToPlannerBtn" style="margin:20px 0 10px;">&larr; Zurück zum Planer</button>
 
-  <p class="small">Version: V2.18</p>
+  <p class="small">Version: V2.22</p>
   <h2>Überblick</h2>
   <p>
     Dieses Tool findet Himmelsobjekte, die mit einem Linsenteleskop (432&nbsp;mm Brennweite, 72&nbsp;mm
@@ -462,6 +481,42 @@
     Standort) &ndash; „Daten laden“/„Neu berechnen“ bzw. „Deep-Sky-Objekte berechnen“ danach erneut
     anklicken.
   </p>
+  <p>
+    <strong>Standorte über GitHub geräteübergreifend teilen (Lesen):</strong> Das Tool lädt beim Start
+    automatisch <code>standorte.json</code> aus demselben Ordner wie diese Seite (GitHub Pages oder
+    <code>http://localhost</code> via „Transit-Planer starten.command“; bei direkt per Doppelklick
+    geöffneter Datei schlägt das wie beim NASA-Live-Abruf lautlos fehl). Ein Gerät ohne eigene
+    gespeicherte Standorte übernimmt sie automatisch; ein Gerät mit abweichenden eigenen Standorten
+    zeigt nur einen Hinweis, „Von GitHub laden“ übernimmt dann nach Rückfrage manuell. Die Datei selbst
+    kommt entweder über „Für GitHub exportieren“ + manuellen Upload im GitHub-Web-Interface dorthin,
+    oder automatisch über den Push-Weg unten.
+  </p>
+  <p>
+    <strong>Standorte automatisch nach GitHub senden (Schreiben):</strong> „Jetzt zu GitHub senden“
+    schickt alle Standorte per POST an einen selbst zu hostenden <strong>Cloudflare-Worker-Proxy</strong>
+    (Quelltext <code>skytracker-sync-worker.js</code> im Auslieferungs-Zip), der sie serverseitig mit
+    einem GitHub-Token in <code>standorte.json</code> schreibt. Das Token verlässt den Worker nie und
+    steht nie im Skytracker-Quelltext. Worker-URL und Zugriffs-Schlüssel werden unter „Sync-Einstellungen“
+    eingetragen und ausschließlich lokal in diesem Browser gespeichert (nie im Repo). Sicherheitsmodell:
+    der <code>X-Skytracker-Key</code>-Header ist keine echte Authentifizierung (er liegt im Klartext im
+    Browser), sondern nur eine Hürde gegen zufälliges Auffinden des Endpunkts; Restrisiko bei Missbrauch
+    ist ausschließlich ein Überschreiben von <code>standorte.json</code> mit validen, aber falschen
+    Standorten &ndash; über die GitHub-Commit-Historie jederzeit rückgängig zu machen. Einrichtung und
+    exakter Schnittstellen-Vertrag: Kommentarkopf in <code>skytracker-sync-worker.js</code>.
+  </p>
+  <dl>
+    <dt>Client &rarr; Worker</dt>
+    <dd><code>POST &lt;Worker-URL&gt;</code>, Header <code>X-Skytracker-Key</code>, Body: JSON-Array der
+      Standorte (Schema wie <code>locations[]</code> im Script, siehe <code>normalizeLocationsArray()</code>).
+      Antwort <code>{ok:true,commit}</code> oder <code>{ok:false,error}</code>.</dd>
+    <dt>Worker-Konfiguration (Cloudflare-Dashboard)</dt>
+    <dd><code>GITHUB_TOKEN</code>, <code>SHARED_KEY</code> als Secrets; <code>GITHUB_OWNER</code>,
+      <code>GITHUB_REPO</code>, <code>GITHUB_PATH</code>, <code>GITHUB_BRANCH</code>,
+      <code>ALLOWED_ORIGIN</code> als normale Variablen.</dd>
+    <dt>localStorage-Keys (Client)</dt>
+    <dd><code>skytracker_sync_worker_url_v1</code>, <code>skytracker_sync_shared_key_v1</code> (Sync-Einstellungen);
+      <code>skytracker_locations_v1</code>, <code>skytracker_active_location_v1</code> (Standorte).</dd>
+  </dl>
   <p>
     Stützpunkte lassen sich im Standort-Fenster wie gewohnt von Hand eintragen, oder über „Vermessen“
     per Handykamera einmessen: Das Tool zeigt das Kamerabild mit Fadenkreuz und berechnet
@@ -712,6 +767,33 @@
       <button type="button" id="locCancelBtn" class="secondary">Abbrechen</button>
       <button type="button" id="locSaveBtn">Speichern</button>
     </div>
+  </div>
+</dialog>
+
+<!-- Sync-Einstellungen: Worker-URL + Shared-Key für "Jetzt zu GitHub senden" (siehe Doku, Abschnitt
+     "Standorte automatisch nach GitHub senden"). Beide Werte bleiben ausschließlich in localStorage
+     dieses Browsers - nie im HTML/Repo - damit landet hier kein Geheimnis im öffentlich ausgelieferten
+     Seitenquelltext. -->
+<dialog id="githubSyncSettingsModal" style="background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); max-width:480px; width:100%; padding:22px 24px; color:var(--text);">
+  <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px;">
+    <h2 style="margin-top:0;">Sync-Einstellungen</h2>
+    <button type="button" id="syncSettingsCloseXBtn" class="secondary" aria-label="Schließen" style="padding:2px 11px; font-size:1.05rem; line-height:1.3; border-radius:6px; margin-top:-2px;">&times;</button>
+  </div>
+  <p class="small" style="margin:0 0 14px;">
+    Adresse und Schlüssel deines Sync-Workers (Einrichtung: siehe Doku, Abschnitt „Standorte automatisch
+    nach GitHub senden“). Beide Werte bleiben nur in diesem Browser gespeichert.
+  </p>
+  <div class="field" style="margin-bottom:12px;">
+    <label>Worker-URL</label>
+    <input type="text" id="syncWorkerUrl" placeholder="https://skytracker-sync.DEIN-SUBDOMAIN.workers.dev">
+  </div>
+  <div class="field" style="margin-bottom:4px;">
+    <label>Zugriffs-Schlüssel</label>
+    <input type="text" id="syncSharedKey" placeholder="derselbe Wert wie SHARED_KEY im Worker">
+  </div>
+  <div style="display:flex; gap:8px; margin-top:22px; justify-content:flex-end;">
+    <button type="button" id="syncSettingsCancelBtn" class="secondary">Abbrechen</button>
+    <button type="button" id="syncSettingsSaveBtn">Speichern</button>
   </div>
 </dialog>
 
@@ -2359,6 +2441,25 @@
     showToast('Standort exportiert.');
   });
 
+  // Defensive Normalisierung eines geparsten Standorte-Arrays: fehlende/ungültige Felder werden auf
+  // sinnvolle Standardwerte gesetzt statt den Import komplett abzulehnen; Stützpunktlisten werden auf
+  // das Limit gekappt. Wirft eine Error, wenn "parsed" gar keine Standortliste sein kann. Gemeinsam
+  // genutzt vom Datei-Import (#importLocationsInput) UND vom GitHub-Sync (loadLocationsFromGithub()
+  // weiter unten), damit beide Wege exakt gleich robust mit unvollständigen/fremden Dateien umgehen.
+  function normalizeLocationsArray(parsed){
+    if(!Array.isArray(parsed) || !parsed.length) throw new Error('Keine gültige Standortliste gefunden.');
+    return parsed.map((l, i) => ({
+      id: (typeof l.id === 'string' && l.id) ? l.id : ('loc-import-' + Date.now().toString(36) + '-' + i),
+      name: (typeof l.name === 'string' && l.name.trim()) ? l.name.trim() : ('Standort ' + (i+1)),
+      lat: isFinite(l.lat) ? l.lat : 52.479476,
+      lon: isFinite(l.lon) ? l.lon : 13.329154,
+      azStart: isFinite(l.azStart) ? l.azStart : 0,
+      azEnd: isFinite(l.azEnd) ? l.azEnd : 360,
+      horizon: Array.isArray(l.horizon) ? l.horizon.filter(p=>isFinite(p.az) && isFinite(p.minEl)).slice(0, MAX_PROFILE_POINTS).map(p=>({az:p.az, minEl:p.minEl, note:p.note||''})) : [],
+      ceiling: Array.isArray(l.ceiling) ? l.ceiling.filter(p=>isFinite(p.az) && isFinite(p.maxEl)).slice(0, MAX_PROFILE_POINTS).map(p=>({az:p.az, maxEl:p.maxEl, note:p.note||''})) : []
+    }));
+  }
+
   document.getElementById('importLocationsBtn').addEventListener('click', ()=>{
     document.getElementById('importLocationsInput').click();
   });
@@ -2368,20 +2469,7 @@
     const reader = new FileReader();
     reader.onload = () => {
       try{
-        const parsed = JSON.parse(reader.result);
-        if(!Array.isArray(parsed) || !parsed.length) throw new Error('Keine gültige Standortliste gefunden.');
-        // Defensive Normalisierung: fehlende/ungültige Felder werden auf sinnvolle Standardwerte
-        // gesetzt statt den Import komplett abzulehnen; Stützpunktlisten werden auf das Limit gekappt.
-        const cleaned = parsed.map((l, i) => ({
-          id: (typeof l.id === 'string' && l.id) ? l.id : ('loc-import-' + Date.now().toString(36) + '-' + i),
-          name: (typeof l.name === 'string' && l.name.trim()) ? l.name.trim() : ('Standort ' + (i+1)),
-          lat: isFinite(l.lat) ? l.lat : 52.479476,
-          lon: isFinite(l.lon) ? l.lon : 13.329154,
-          azStart: isFinite(l.azStart) ? l.azStart : 0,
-          azEnd: isFinite(l.azEnd) ? l.azEnd : 360,
-          horizon: Array.isArray(l.horizon) ? l.horizon.filter(p=>isFinite(p.az) && isFinite(p.minEl)).slice(0, MAX_PROFILE_POINTS).map(p=>({az:p.az, minEl:p.minEl, note:p.note||''})) : [],
-          ceiling: Array.isArray(l.ceiling) ? l.ceiling.filter(p=>isFinite(p.az) && isFinite(p.maxEl)).slice(0, MAX_PROFILE_POINTS).map(p=>({az:p.az, maxEl:p.maxEl, note:p.note||''})) : []
-        }));
+        const cleaned = normalizeLocationsArray(JSON.parse(reader.result));
         locations = cleaned;
         activeLocationId = locations[0].id;
         saveLocations();
@@ -2394,6 +2482,173 @@
       document.getElementById('importLocationsInput').value = '';
     };
     reader.readAsText(file);
+  });
+
+  // ---------- GitHub als gemeinsame Standort-Quelle ----------
+  // Idee: Eine Datei "standorte.json" liegt im selben Ordner wie diese HTML-Seite im GitHub-Repo (also
+  // neben index.html) bzw. beim lokalen Start über "Transit-Planer starten.command" im selben Ordner
+  // wie die .html-Datei. Ein relativer fetch() darauf funktioniert auf GitHub Pages (HTTPS) und über
+  // den lokalen Server (http://localhost) genau wie der Seitenaufruf selbst - schlägt bei einem direkt
+  // per Doppelklick geöffneten file://-Dokument dagegen fehl (derselbe Unterschied wie beim NASA-Live-
+  // Abruf) und wird dann still ignoriert, statt einen Fehler zu zeigen. Echtes automatisches
+  // Zurückschreiben auf GitHub gibt es bewusst NICHT: Das würde entweder ein GitHub-Zugriffstoken im
+  // Tool erfordern (jeder Besucher der öffentlichen Seite könnte es auslesen und damit ins Repo
+  // schreiben) oder einen eigenen Server - beides würde die "eine einzelne HTML-Datei ohne Backend"-
+  // Architektur aufgeben. Stattdessen bleibt der Weg zurück nach GitHub ein bewusster, manueller
+  // Schritt über "Für GitHub exportieren" + Hochladen im GitHub-Web-Interface (wie bei index.html).
+  const GITHUB_LOCATIONS_FILE = 'standorte.json';
+
+  // Wird EINMALIG beim Skript-Start ausgewertet, bevor irgendetwas in den Local Storage schreibt -
+  // true bedeutet "auf diesem Gerät/Browser wurden noch nie eigene Standorte gespeichert" (frischer
+  // Aufruf bzw. Browserdaten gelöscht). Nur dann wird eine gefundene standorte.json automatisch
+  // stillschweigend übernommen; sind bereits eigene Standorte vorhanden, wird nur ein Hinweis gezeigt
+  // (siehe loadLocationsFromGithub()) statt lokale Änderungen ungefragt zu überschreiben.
+  const isFreshDevice = (function(){
+    try{ return localStorage.getItem(LOCATION_STORAGE_KEY) === null; }
+    catch(e){ return true; }
+  })();
+
+  async function fetchGithubLocations(){
+    const res = await fetch(GITHUB_LOCATIONS_FILE, {cache:'no-store'});
+    if(!res.ok) throw new Error('Datei nicht gefunden (HTTP ' + res.status + ')');
+    return normalizeLocationsArray(await res.json());
+  }
+
+  // interactive=true (Button-Klick): zeigt Erfolgs-/Fehlermeldungen und fragt vor dem Überschreiben
+  // per confirm() nach. interactive=false (automatischer Check beim Start): bleibt bei jedem Problem
+  // und bei "nichts geändert" komplett still, übernimmt bei frischem Gerät direkt und zeigt sonst nur
+  // den dezenten Dauer-Hinweis in #githubSyncHint statt eines Toasts.
+  async function loadLocationsFromGithub(interactive){
+    let cleaned;
+    try{
+      cleaned = await fetchGithubLocations();
+    }catch(err){
+      if(interactive) showToast('Laden von GitHub fehlgeschlagen: ' + (err && err.message ? err.message : 'unbekannter Fehler') + ' - liegt „standorte.json“ im selben Ordner wie diese Seite?');
+      return;
+    }
+
+    const unchanged = JSON.stringify(cleaned) === JSON.stringify(locations);
+    if(unchanged){
+      if(interactive) showToast('Standorte auf GitHub sind identisch mit dem lokalen Stand - nichts zu übernehmen.');
+      document.getElementById('githubSyncHint').style.display = 'none';
+      return;
+    }
+
+    if(interactive){
+      if(!confirm(`${cleaned.length} Standort(e) von GitHub übernehmen und die aktuelle lokale Liste (${locations.length} Standort(e)) damit ersetzen? Das kann nicht rückgängig gemacht werden.`)) return;
+    } else if(!isFreshDevice){
+      // Wiederkehrendes Gerät mit abweichenden lokalen Standorten: nicht stillschweigend
+      // überschreiben, sondern nur sichtbar machen, dass eine andere Version vorliegt.
+      const hint = document.getElementById('githubSyncHint');
+      hint.textContent = `Hinweis: Die Standorte-Datei auf GitHub unterscheidet sich vom lokalen Stand auf diesem Gerät - über „Von GitHub laden“ oben übernehmbar.`;
+      hint.style.display = '';
+      return;
+    }
+
+    locations = cleaned;
+    activeLocationId = locations[0].id;
+    saveLocations();
+    saveActiveLocationId(activeLocationId);
+    applyActiveLocation();
+    document.getElementById('githubSyncHint').style.display = 'none';
+    showToast(`${locations.length} Standort(e) von GitHub geladen.`);
+  }
+
+  document.getElementById('githubLoadBtn').addEventListener('click', ()=>loadLocationsFromGithub(true));
+
+  document.getElementById('githubExportBtn').addEventListener('click', ()=>{
+    // Bewusst ALLE Standorte (nicht nur den aktiven) UND ein fester Dateiname "standorte.json" - die
+    // Datei ist zum direkten Hochladen in den GitHub-Pages-Ordner gedacht (siehe Doku), wo fetch() sie
+    // beim nächsten Laden der Seite auf jedem Gerät automatisch wiederfindet.
+    const blob = new Blob([JSON.stringify(locations, null, 2)], {type:'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = GITHUB_LOCATIONS_FILE;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    showToast(`${locations.length} Standort(e) als "${GITHUB_LOCATIONS_FILE}" exportiert - siehe Doku für den Upload-Schritt.`);
+  });
+
+  // ---------- Sync-Einstellungen (Worker-URL + Shared-Key, nur localStorage) ----------
+  // NIE ins HTML/Repo schreiben - anders als locations bleiben diese beiden Werte bewusst reine
+  // Geräte-/Browser-Einstellungen (siehe Doku, Abschnitt "Standorte automatisch nach GitHub senden").
+  const SYNC_WORKER_URL_KEY = 'skytracker_sync_worker_url_v1';
+  const SYNC_SHARED_KEY_KEY = 'skytracker_sync_shared_key_v1';
+
+  function loadSyncSettings(){
+    try{
+      return {
+        workerUrl: localStorage.getItem(SYNC_WORKER_URL_KEY) || '',
+        sharedKey: localStorage.getItem(SYNC_SHARED_KEY_KEY) || ''
+      };
+    }catch(e){ return {workerUrl:'', sharedKey:''}; }
+  }
+  function saveSyncSettings(workerUrl, sharedKey){
+    try{
+      localStorage.setItem(SYNC_WORKER_URL_KEY, workerUrl);
+      localStorage.setItem(SYNC_SHARED_KEY_KEY, sharedKey);
+    }catch(e){ showToast('Hinweis: Sync-Einstellungen konnten nicht gespeichert werden (Browser-Speicher nicht verfügbar).'); }
+  }
+
+  function openSyncSettingsModal(){
+    const s = loadSyncSettings();
+    document.getElementById('syncWorkerUrl').value = s.workerUrl;
+    document.getElementById('syncSharedKey').value = s.sharedKey;
+    document.getElementById('githubSyncSettingsModal').showModal();
+  }
+  function closeSyncSettingsModal(){
+    document.getElementById('githubSyncSettingsModal').close();
+  }
+  document.getElementById('githubSyncSettingsBtn').addEventListener('click', openSyncSettingsModal);
+  document.getElementById('syncSettingsCancelBtn').addEventListener('click', closeSyncSettingsModal);
+  document.getElementById('syncSettingsCloseXBtn').addEventListener('click', closeSyncSettingsModal);
+  document.getElementById('syncSettingsSaveBtn').addEventListener('click', ()=>{
+    const workerUrl = document.getElementById('syncWorkerUrl').value.trim();
+    const sharedKey = document.getElementById('syncSharedKey').value.trim();
+    saveSyncSettings(workerUrl, sharedKey);
+    closeSyncSettingsModal();
+    showToast('Sync-Einstellungen gespeichert.');
+  });
+
+  // Sendet ALLE aktuellen Standorte an den Sync-Worker, der sie serverseitig (mit seinem eigenen,
+  // dem Browser nie zugänglichen GitHub-Token) in standorte.json im Repo schreibt - siehe
+  // skytracker-sync-worker.js und Doku für die Gegenseite/Einrichtung. Der hier mitgeschickte
+  // X-Skytracker-Key-Header ist bewusst KEINE echte Authentifizierung (er liegt im Klartext in
+  // diesem Browser), sondern nur eine Hürde gegen zufälliges Auffinden des Endpunkts - siehe
+  // Sicherheits-Hinweis im Worker-Code und in der Doku.
+  document.getElementById('githubPushBtn').addEventListener('click', async ()=>{
+    const {workerUrl, sharedKey} = loadSyncSettings();
+    if(!workerUrl || !sharedKey){
+      showToast('Erst unter „Sync-Einstellungen“ Worker-URL und Zugriffs-Schlüssel eintragen.');
+      return;
+    }
+    const btn = document.getElementById('githubPushBtn');
+    btn.disabled = true;
+    const originalText = btn.textContent;
+    btn.textContent = 'Sende…';
+    try{
+      const res = await fetch(workerUrl, {
+        method: 'POST',
+        headers: {'Content-Type':'application/json', 'X-Skytracker-Key': sharedKey},
+        body: JSON.stringify(locations)
+      });
+      let body = null;
+      try{ body = await res.json(); }catch(e){ /* Antwort war kein JSON - body bleibt null */ }
+      if(res.ok && body && body.ok){
+        showToast(`${locations.length} Standort(e) automatisch nach GitHub gesendet.`);
+      } else {
+        const errMsg = (body && body.error) ? body.error : ('HTTP ' + res.status);
+        showToast('Senden fehlgeschlagen: ' + errMsg);
+      }
+    }catch(err){
+      showToast('Senden fehlgeschlagen: Worker nicht erreichbar (' + (err && err.message ? err.message : 'Netzwerkfehler') + ').');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = originalText;
+    }
   });
 
   function maxElevationAt(az, profile){
@@ -3112,7 +3367,7 @@
     const tbody = document.getElementById('resultsBody');
     tbody.innerHTML = rows.map((r,idx)=>`
       <tr data-idx="${idx}" class="${r===highlightedRow?'row-highlighted':''}">
-        <td><a href="${varSearchUrl}" target="_blank" title="Suche auf var.astro.cz nach ${escapeHtml(r.pl_name)}"><strong>${escapeHtml(r.pl_name)}</strong></a><div class="small">${escapeHtml(r.hostname||'')}</div></td>
+        <td><a class="result-name-link" href="${varSearchUrl}" target="_blank" title="Suche auf var.astro.cz nach ${escapeHtml(r.pl_name)}"><strong>${escapeHtml(r.pl_name)}</strong></a></td>
         <td>${escapeHtml(r.constellation.replace(/\s*\([^)]*\)\s*$/, ''))}</td>
         <td>${r.sy_vmag===null?'&ndash;':r.sy_vmag.toFixed(1)}</td>
         <td>${r.depthPct===null?'&ndash;':r.depthPct.toFixed(2)+'%'}</td>
@@ -3325,6 +3580,9 @@
   rebuildLocationTiles();
   applyActiveLocationFields();
   drawCompass();
+  // Nicht blockierend (async, kein await hier) und bewusst still bei jedem Fehler/fehlender Datei -
+  // siehe Kommentar bei loadLocationsFromGithub() weiter oben.
+  loadLocationsFromGithub(false);
 })();
 </script>
 
