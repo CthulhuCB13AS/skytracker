@@ -1,0 +1,351 @@
+[
+  {
+    "id": "loc-bundesplatz",
+    "name": "Bundesplatz",
+    "lat": 52.479476,
+    "lon": 13.329154,
+    "azStart": 180,
+    "azEnd": 313,
+    "horizon": [
+      {
+        "az": 193,
+        "minEl": 40,
+        "note": "Hausdach (SSW)"
+      },
+      {
+        "az": 243,
+        "minEl": 29,
+        "note": "Hausdach (WSW) 3"
+      },
+      {
+        "az": 249,
+        "minEl": 17,
+        "note": "Hausdach (WSW) 2"
+      },
+      {
+        "az": 260,
+        "minEl": 19,
+        "note": "Hausdach (WSW) 1"
+      },
+      {
+        "az": 266,
+        "minEl": 29,
+        "note": "Baum (W) 3"
+      },
+      {
+        "az": 283,
+        "minEl": 29,
+        "note": "Baum (W) 2"
+      },
+      {
+        "az": 286,
+        "minEl": 17,
+        "note": "Baum (W) 1"
+      },
+      {
+        "az": 290,
+        "minEl": 21,
+        "note": "Baum (WNW) 2"
+      },
+      {
+        "az": 309,
+        "minEl": 42,
+        "note": "Baum (WNW) 1b"
+      },
+      {
+        "az": 313,
+        "minEl": 42,
+        "note": "Baum (WNW) 1"
+      }
+    ],
+    "ceiling": [
+      {
+        "az": 193,
+        "maxEl": 47,
+        "note": "Balkon oben – linke Ecke (SSW)"
+      },
+      {
+        "az": 313,
+        "maxEl": 60,
+        "note": "Balkon oben – rechte Ecke (WNW)"
+      }
+    ]
+  },
+  {
+    "id": "loc-mssj91oo-tak74",
+    "name": "Mahlsdorf (Schuppen)",
+    "lat": 52.522193,
+    "lon": 13.615588,
+    "azStart": 0,
+    "azEnd": 360,
+    "horizon": [
+      {
+        "az": 54.7,
+        "minEl": 22,
+        "note": "vermessen"
+      },
+      {
+        "az": 62.9,
+        "minEl": 33.7,
+        "note": "vermessen"
+      },
+      {
+        "az": 68.9,
+        "minEl": 16.4,
+        "note": "vermessen"
+      },
+      {
+        "az": 80.1,
+        "minEl": 27.8,
+        "note": "vermessen"
+      },
+      {
+        "az": 82.9,
+        "minEl": 21.2,
+        "note": "vermessen"
+      },
+      {
+        "az": 83.8,
+        "minEl": 24.4,
+        "note": "vermessen"
+      },
+      {
+        "az": 120.7,
+        "minEl": 14.1,
+        "note": "vermessen"
+      },
+      {
+        "az": 123.7,
+        "minEl": 29,
+        "note": "vermessen"
+      },
+      {
+        "az": 140.3,
+        "minEl": 27.3,
+        "note": "vermessen"
+      },
+      {
+        "az": 147.4,
+        "minEl": 17.9,
+        "note": "vermessen"
+      },
+      {
+        "az": 166.2,
+        "minEl": 16.8,
+        "note": "vermessen"
+      },
+      {
+        "az": 177.7,
+        "minEl": 56.8,
+        "note": "vermessen"
+      },
+      {
+        "az": 184.4,
+        "minEl": 24.3,
+        "note": "vermessen"
+      },
+      {
+        "az": 194,
+        "minEl": 17.6,
+        "note": "vermessen"
+      },
+      {
+        "az": 201.5,
+        "minEl": 67,
+        "note": "vermessen"
+      },
+      {
+        "az": 208,
+        "minEl": 21.5,
+        "note": "vermessen"
+      },
+      {
+        "az": 224.4,
+        "minEl": 64.1,
+        "note": "vermessen"
+      },
+      {
+        "az": 230.1,
+        "minEl": 14.7,
+        "note": "vermessen"
+      },
+      {
+        "az": 238,
+        "minEl": 47.9,
+        "note": "vermessen"
+      },
+      {
+        "az": 259.4,
+        "minEl": 18.2,
+        "note": "vermessen"
+      },
+      {
+        "az": 263.3,
+        "minEl": 27.4,
+        "note": "vermessen"
+      },
+      {
+        "az": 284.5,
+        "minEl": 32,
+        "note": "vermessen"
+      },
+      {
+        "az": 303.3,
+        "minEl": 37.9,
+        "note": "vermessen"
+      },
+      {
+        "az": 336.8,
+        "minEl": 19.1,
+        "note": "vermessen"
+      },
+      {
+        "az": 341.6,
+        "minEl": 18.7,
+        "note": "vermessen"
+      },
+      {
+        "az": 345.2,
+        "minEl": 40.5,
+        "note": "vermessen"
+      },
+      {
+        "az": 354.3,
+        "minEl": 28.9,
+        "note": "vermessen"
+      }
+    ],
+    "ceiling": []
+  },
+  {
+    "id": "loc-mssjbhh7-o4p4d",
+    "name": "Mahlsdorf (Hausecke)",
+    "lat": 52.522193,
+    "lon": 13.615588,
+    "azStart": 0,
+    "azEnd": 360,
+    "horizon": [
+      {
+        "az": 13.2,
+        "minEl": 18.1,
+        "note": "vermessen"
+      },
+      {
+        "az": 20.9,
+        "minEl": 17.7,
+        "note": "vermessen"
+      },
+      {
+        "az": 33.1,
+        "minEl": 30.4,
+        "note": "vermessen"
+      },
+      {
+        "az": 88.2,
+        "minEl": 40.6,
+        "note": "vermessen"
+      },
+      {
+        "az": 132.3,
+        "minEl": 35.8,
+        "note": "vermessen"
+      },
+      {
+        "az": 143.5,
+        "minEl": 38.5,
+        "note": "vermessen"
+      },
+      {
+        "az": 146.2,
+        "minEl": 57,
+        "note": "vermessen"
+      },
+      {
+        "az": 157.2,
+        "minEl": 20.2,
+        "note": "vermessen"
+      },
+      {
+        "az": 159.7,
+        "minEl": 24.1,
+        "note": "vermessen"
+      },
+      {
+        "az": 170.4,
+        "minEl": 49.1,
+        "note": "vermessen"
+      },
+      {
+        "az": 171.3,
+        "minEl": 23.8,
+        "note": "vermessen"
+      },
+      {
+        "az": 190.1,
+        "minEl": 23.7,
+        "note": "vermessen"
+      },
+      {
+        "az": 192.3,
+        "minEl": 67.6,
+        "note": "vermessen"
+      },
+      {
+        "az": 192.6,
+        "minEl": 17.7,
+        "note": "vermessen"
+      },
+      {
+        "az": 222.7,
+        "minEl": 28.5,
+        "note": "vermessen"
+      },
+      {
+        "az": 230.3,
+        "minEl": 22.7,
+        "note": "vermessen"
+      },
+      {
+        "az": 260.6,
+        "minEl": 64.5,
+        "note": "vermessen"
+      },
+      {
+        "az": 299.4,
+        "minEl": 14.9,
+        "note": "vermessen"
+      },
+      {
+        "az": 303.6,
+        "minEl": 16.3,
+        "note": "vermessen"
+      },
+      {
+        "az": 310.6,
+        "minEl": 12.7,
+        "note": "vermessen"
+      },
+      {
+        "az": 312.4,
+        "minEl": 38.3,
+        "note": "vermessen"
+      },
+      {
+        "az": 330.8,
+        "minEl": 12.4,
+        "note": "vermessen"
+      },
+      {
+        "az": 344.3,
+        "minEl": 8.5,
+        "note": "vermessen"
+      },
+      {
+        "az": 360,
+        "minEl": 22.9,
+        "note": "vermessen"
+      }
+    ],
+    "ceiling": []
+  }
+]
