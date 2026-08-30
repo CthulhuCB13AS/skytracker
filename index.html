@@ -332,12 +332,13 @@
         <div style="display:flex; flex-direction:column; gap:3px; margin-top:8px;">
           <button id="loadBtn">Daten laden (NASA Exoplanet Archive)</button>
           <button id="recomputeBtn" class="secondary" disabled>Neu berechnen (gleiche Daten, neue Filter)</button>
+          <button type="button" id="exoWorkerSettingsBtn" class="secondary" style="padding:6px 12px; font-size:0.8rem;" title="Die kostenlosen öffentlichen CORS-Proxys sind unzuverlässig bzw. inzwischen teils abgeschaltet/kostenpflichtig. Ein eigener, kostenloser Cloudflare Worker als Proxy behebt das dauerhaft.">Eigener Proxy-Worker (optional, empfohlen)</button>
         </div>
         <div id="status"></div>
         <div id="loadLog" class="small" style="margin-top:6px; display:flex; flex-direction:column; gap:2px;"></div>
         <div id="fallback">
           <strong>Alle automatischen Wege sind fehlgeschlagen.</strong><br>
-          Schauen Sie oben im Log, welche Fehlermeldung bei jedem der vier Versuche stand &ndash; das grenzt die Ursache meist gut ein (z.&nbsp;B. "HTTP-Status 429" = Proxy überlastet, "Zeitüberschreitung" = Netzwerk/Firewall, generisches "Failed to fetch" = Browser blockiert die Anfrage komplett, oft durch Adblocker/Tracking-Schutz oder DNS-Filter). Der Browser gibt uns bei "Failed to fetch" leider keinen genaueren Grund preis; falls das bei allen vier Versuchen steht, öffnen Sie einmal die Entwicklerkonsole (F12 &rarr; Tab „Konsole&ldquo;) und klicken erneut auf „Daten laden&ldquo; &ndash; dort steht die echte Fehlermeldung des Browsers. Falls Sie einen Adblocker/Privacy-Erweiterung oder ein DNS-Filter (Pi-hole, NextDNS, Firmen-Firewall) nutzen: <code>allorigins.win</code>, <code>codetabs.com</code>, <code>corsproxy.io</code> und <code>exoplanetarchive.ipac.caltech.edu</code> müssten dort erlaubt sein.
+          Schauen Sie oben im Log, welche Fehlermeldung bei jedem Versuch stand &ndash; das grenzt die Ursache meist gut ein (z.&nbsp;B. "HTTP-Status 429"/"401" = Proxy überlastet bzw. verlangt inzwischen einen Schlüssel, "Zeitüberschreitung" = Proxy zu langsam/Netzwerk/Firewall, generisches "Failed to fetch" = Browser blockiert die Anfrage komplett, oft durch Adblocker/Tracking-Schutz oder DNS-Filter). Die kostenlosen öffentlichen CORS-Proxys (<code>allorigins.win</code>, <code>codetabs.com</code>) sind erfahrungsgemäß unzuverlässig und teils überlastet &ndash; <code>corsproxy.io</code> verlangt inzwischen sogar zwingend einen kostenpflichtigen API-Schlüssel und wurde deshalb aus der Liste entfernt. Die dauerhaft robuste Lösung dagegen ist der eigene Proxy-Worker (Knopf „Eigener Proxy-Worker“ oben) &ndash; siehe Doku, Abschnitt „Datenquelle &amp; Laden“. Der Browser gibt uns bei "Failed to fetch" leider keinen genaueren Grund preis; falls das bei allen Versuchen steht, öffnen Sie einmal die Entwicklerkonsole (F12 &rarr; Tab „Konsole&ldquo;) und klicken erneut auf „Daten laden&ldquo; &ndash; dort steht die echte Fehlermeldung des Browsers. Falls Sie einen Adblocker/Privacy-Erweiterung oder ein DNS-Filter (Pi-hole, NextDNS, Firmen-Firewall) nutzen: <code>allorigins.win</code>, <code>codetabs.com</code> und <code>exoplanetarchive.ipac.caltech.edu</code> (sowie ggf. Ihre eigene <code>workers.dev</code>-Adresse) müssten dort erlaubt sein.
           <details style="margin-top:8px;">
             <summary style="cursor:pointer; color:var(--muted);">Nur falls gar nichts geht: Daten manuell laden</summary>
             <ol>
@@ -632,13 +633,23 @@
   <h2>Datenquelle &amp; Laden</h2>
   <p>
     Transit-Ephemeriden aller bekannten Exoplaneten werden live von der NASA Exoplanet Archive geladen
-    (Tabelle <code>pscomppars</code> via TAP-Dienst). Scheitert der direkte Abruf am Browser-CORS, versucht
-    das Tool automatisch mehrere öffentliche CORS-Proxys, bevor ein manueller Download-/Upload-Weg angeboten
-    wird. var.astro.cz wird aus diesem Tool heraus nicht automatisiert abgefragt &ndash; deren robots.txt
-    untersagt das für die Transit-Vorhersageseite ausdrücklich. Der Deep-Sky-Katalog ist dagegen fest im
-    Tool eingebettet (563 Objekte: alle mit Messier-Nummer oder Helligkeit heller als 10&nbsp;mag aus
-    OpenNGC, ohne Doppelsterne, Duplikate und nicht-existente Katalogeinträge) und funktioniert ohne
-    Internetverbindung.
+    (Tabelle <code>pscomppars</code> via TAP-Dienst). Der direkte Abruf scheitert im Browser praktisch immer
+    am fehlenden CORS-Header dieses NASA-Diensts (kein Fehler des eigenen Rechners/Netzwerks, sondern
+    Standardverhalten von <code>fetch()</code> bei fremden Ursprüngen ohne <code>Access-Control-Allow-Origin</code>).
+    Das Tool versucht deshalb der Reihe nach: (1) einen <strong>eigenen Proxy-Worker</strong>, falls unter
+    „Eigener Proxy-Worker“ eingerichtet, (2) den direkten Abruf (funktioniert nur mit passender Browser-Erweiterung),
+    (3)/(4) zwei öffentliche Gratis-CORS-Proxys (<code>allorigins.win</code>, <code>codetabs.com</code>) als
+    Notbehelf, bevor ein manueller Download-/Upload-Weg angeboten wird. Die Gratis-Proxys sind erfahrungsgemäß
+    langsam/überlastet und können jederzeit ganz abgeschaltet oder kostenpflichtig werden (wie es bei
+    <code>corsproxy.io</code> bereits passiert ist) &ndash; für den dauerhaft zuverlässigen Betrieb wird daher
+    ein eigener, kostenloser Cloudflare Worker empfohlen: Datei <code>exoplanet-proxy-worker.js</code> gemäß der
+    darin enthaltenen Anleitung einmalig auf <a href="https://dash.cloudflare.com/" target="_blank">dash.cloudflare.com</a>
+    deployen und die resultierende <code>workers.dev</code>-Adresse im Tool unter „Eigener Proxy-Worker“
+    eintragen &ndash; danach ist die Datenladung von den Gratis-Proxys unabhängig. var.astro.cz wird aus diesem
+    Tool heraus nicht automatisiert abgefragt &ndash; deren robots.txt untersagt das für die
+    Transit-Vorhersageseite ausdrücklich. Der Deep-Sky-Katalog ist dagegen fest im Tool eingebettet
+    (563 Objekte: alle mit Messier-Nummer oder Helligkeit heller als 10&nbsp;mag aus OpenNGC, ohne Doppelsterne,
+    Duplikate und nicht-existente Katalogeinträge) und funktioniert ohne Internetverbindung.
   </p>
 
   <h2>Ergebnistabelle: Exoplaneten vs. Deep-Sky</h2>
@@ -814,6 +825,36 @@
   <div style="display:flex; gap:8px; margin-top:22px; justify-content:flex-end;">
     <button type="button" id="syncSettingsCancelBtn" class="secondary">Abbrechen</button>
     <button type="button" id="syncSettingsSaveBtn">Speichern</button>
+  </div>
+</dialog>
+
+<!-- Eigener Proxy-Worker für den Exoplaneten-Datenabruf: löst das CORS-Problem beim NASA-TAP-Dienst
+     dauerhaft und zuverlässig, ohne von den unzuverlässigen/teils kostenpflichtigen öffentlichen
+     Gratis-CORS-Proxys abhängig zu sein (siehe Doku, Abschnitt "Datenquelle & Laden"). Nur die
+     resultierende workers.dev-Adresse wird hier gespeichert (localStorage dieses Browsers) - kein
+     Schlüssel nötig, da der Worker selbst (exoplanet-proxy-worker.js) absichtlich nur genau diese eine
+     feste NASA-Abfrage weiterreicht und daher nicht als offener Proxy missbraucht werden kann. -->
+<dialog id="exoWorkerSettingsModal" style="background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); max-width:480px; width:100%; padding:22px 24px; color:var(--text);">
+  <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px;">
+    <h2 style="margin-top:0;">Eigener Proxy-Worker</h2>
+    <button type="button" id="exoWorkerSettingsCloseXBtn" class="secondary" aria-label="Schließen" title="Schließen (wie Abbrechen)" style="padding:2px 11px; font-size:1.05rem; line-height:1.3; border-radius:6px; margin-top:-2px;">&times;</button>
+  </div>
+  <p class="small" style="margin:0 0 14px;">
+    Die kostenlosen öffentlichen CORS-Proxys, über die dieses Tool sonst versucht, die NASA-Exoplaneten-Daten
+    zu laden, sind unzuverlässig und teils inzwischen kostenpflichtig (<code>corsproxy.io</code>). Ein eigener
+    Cloudflare Worker (kostenlos, eigener Account) behebt das dauerhaft, da er nur diese eine feste NASA-Abfrage
+    mit CORS-Header ausliefert. Einrichtung: Datei <code>exoplanet-proxy-worker.js</code> öffnen, Anleitung im
+    Kopf-Kommentar befolgen (kurz: Code bei <a href="https://dash.cloudflare.com/" target="_blank">dash.cloudflare.com</a>
+    &rarr; Workers &amp; Pages &rarr; "Create Worker" einfügen und deployen), dann hier die angezeigte
+    <code>workers.dev</code>-Adresse eintragen. Leer lassen, um weiterhin nur die Gratis-Proxys zu nutzen.
+  </p>
+  <div class="field" style="margin-bottom:4px;">
+    <label for="exoWorkerUrl">Worker-URL</label>
+    <input type="text" id="exoWorkerUrl" placeholder="https://exoplanet-proxy.DEIN-SUBDOMAIN.workers.dev">
+  </div>
+  <div style="display:flex; gap:8px; margin-top:22px; justify-content:flex-end;">
+    <button type="button" id="exoWorkerSettingsCancelBtn" class="secondary">Abbrechen</button>
+    <button type="button" id="exoWorkerSettingsSaveBtn">Speichern</button>
   </div>
 </dialog>
 
@@ -1698,15 +1739,33 @@
     reader.readAsText(file);
   });
 
-  // Mehrere Wege zum Datenabruf. corsproxy.io zuerst, weil das bei diesem Nutzer/Netzwerk
-  // zuverlässig funktioniert (die anderen Wege scheitern bei ihm konsequent) – restliche Wege
-  // bleiben als Fallback, falls corsproxy.io einmal down ist.
-  const DATA_SOURCES = [
-    { name: 'Proxy: corsproxy.io', url: 'https://corsproxy.io/?url=' + encodeURIComponent(dataUrl) },
-    { name: 'NASA Exoplanet Archive (direkt)', url: dataUrl },
-    { name: 'Proxy: allorigins.win', url: 'https://api.allorigins.win/raw?url=' + encodeURIComponent(dataUrl) },
-    { name: 'Proxy: codetabs.com', url: 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(dataUrl) }
-  ];
+  // Eigener Proxy-Worker (siehe exoplanet-proxy-worker.js + "Eigener Proxy-Worker"-Dialog): löst das
+  // CORS-Problem dauerhaft und zuverlässig, ohne von öffentlichen Gratis-Proxys abzuhängen. Nur
+  // localStorage, kein Geheimnis nötig (der Worker liefert ausschließlich diese eine feste Abfrage aus).
+  const EXO_WORKER_URL_KEY = 'skytracker_exo_worker_url_v1';
+  function loadExoWorkerUrl(){
+    try{ return (localStorage.getItem(EXO_WORKER_URL_KEY) || '').trim(); }catch(e){ return ''; }
+  }
+  function saveExoWorkerUrl(url){
+    try{ localStorage.setItem(EXO_WORKER_URL_KEY, url); }
+    catch(e){ showToast('Hinweis: Proxy-Worker-Adresse konnte nicht gespeichert werden (Browser-Speicher nicht verfügbar).'); }
+  }
+
+  // Mehrere Wege zum Datenabruf, in dieser Reihenfolge probiert. corsproxy.io ist NICHT mehr dabei:
+  // der Dienst verlangt inzwischen zwingend einen kostenpflichtigen API-Schlüssel (liefert sonst nur
+  // noch HTTP 401 "A valid API key is required"). Die verbleibenden zwei öffentlichen Gratis-Proxys
+  // (allorigins.win, codetabs.com) sind erfahrungsgemäß langsam/unzuverlässig und dienen nur noch als
+  // letzter Notbehelf - wer regelmäßig Daten lädt, sollte den eigenen Proxy-Worker einrichten (dann
+  // steht der hier als allererste, schnelle und zuverlässige Quelle).
+  function buildDataSources(){
+    const sources = [];
+    const workerUrl = loadExoWorkerUrl();
+    if(workerUrl) sources.push({ name: 'Eigener Proxy-Worker', url: workerUrl, timeoutMs: 15000 });
+    sources.push({ name: 'NASA Exoplanet Archive (direkt)', url: dataUrl, timeoutMs: 10000 });
+    sources.push({ name: 'Proxy: allorigins.win', url: 'https://api.allorigins.win/raw?url=' + encodeURIComponent(dataUrl), timeoutMs: 25000 });
+    sources.push({ name: 'Proxy: codetabs.com', url: 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(dataUrl), timeoutMs: 25000 });
+    return sources;
+  }
 
   // Bewusst NUR ein einfacher GET ohne Extra-Header. Bewusst OHNE AbortController/signal:
   // manche Sicherheits-/Adblock-Erweiterungen klinken sich in fetch() ein und leiten den Aufruf
@@ -1739,11 +1798,12 @@
     fallbackEl.style.display = 'none';
     const log = [];
     renderLog(log);
+    const DATA_SOURCES = buildDataSources();
     for(let i=0; i<DATA_SOURCES.length; i++){
       const src = DATA_SOURCES[i];
       statusEl.textContent = `Lade Daten … Versuch ${i+1}/${DATA_SOURCES.length}: ${src.name}`;
       try{
-        const text = await fetchWithTimeout(src.url, 20000);
+        const text = await fetchWithTimeout(src.url, src.timeoutMs || 20000);
         const parsed = parseCSV(text);
         if(!parsed.length) throw new Error('CSV geparst, aber 0 Zeilen erkannt (Format unerwartet?)');
         rawData = parsed;
@@ -2620,6 +2680,25 @@
     saveSyncSettings(workerUrl, sharedKey);
     closeSyncSettingsModal();
     showToast('Sync-Einstellungen gespeichert.');
+  });
+
+  // ---------- Eigener Proxy-Worker für den Exoplaneten-Datenabruf (Dialog) ----------
+  // loadExoWorkerUrl()/saveExoWorkerUrl() sind weiter oben bei buildDataSources() definiert.
+  function openExoWorkerSettingsModal(){
+    document.getElementById('exoWorkerUrl').value = loadExoWorkerUrl();
+    document.getElementById('exoWorkerSettingsModal').showModal();
+  }
+  function closeExoWorkerSettingsModal(){
+    document.getElementById('exoWorkerSettingsModal').close();
+  }
+  document.getElementById('exoWorkerSettingsBtn').addEventListener('click', openExoWorkerSettingsModal);
+  document.getElementById('exoWorkerSettingsCancelBtn').addEventListener('click', closeExoWorkerSettingsModal);
+  document.getElementById('exoWorkerSettingsCloseXBtn').addEventListener('click', closeExoWorkerSettingsModal);
+  document.getElementById('exoWorkerSettingsSaveBtn').addEventListener('click', ()=>{
+    const workerUrl = document.getElementById('exoWorkerUrl').value.trim();
+    saveExoWorkerUrl(workerUrl);
+    closeExoWorkerSettingsModal();
+    showToast(workerUrl ? 'Proxy-Worker-Adresse gespeichert.' : 'Proxy-Worker-Adresse entfernt – es werden wieder nur die Gratis-Proxys versucht.');
   });
 
   // Sendet ALLE aktuellen Standorte an den Sync-Worker, der sie serverseitig (mit seinem eigenen,
