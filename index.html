@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Skytracker_BP17 – Version V2.24 -->
+<!-- Skytracker_BP17 – Version V2.26 -->
 <html lang="de">
 <head>
 <meta charset="UTF-8">
@@ -11,6 +11,9 @@
     --text:#e7ecf5; --muted:#93a0bb; --accent:#5fb3ff; --accent2:#7ee7c7;
     --warn:#f4c258; --bad:#f2687a; --good:#7ee7c7;
     --radius:10px;
+    /* Rahmenfarbe für Eingabefelder: 3,8:1 gegen den Karten-Hintergrund (WCAG 1.4.11 verlangt für
+       Bedienelement-Grenzen mind. 3:1 - das bisherige --border lag bei nur 1,3:1). */
+    --input-border:#6b7894;
   }
   *{box-sizing:border-box;}
   body{
@@ -37,6 +40,7 @@
   .field input[type=number], .field input[type=date], .field input[type=text], .field select{
     width:100%; background:var(--panel2); border:1px solid var(--border); color:var(--text);
     border-radius:7px; padding:7px 9px; font-size:0.9rem; height:36px; box-sizing:border-box;
+    border-color:var(--input-border);
     display:block; margin:0; vertical-align:top;
   }
   /* iOS Safari rendert input[type=date] sonst mit einem eigenen nativen Chrome-Element, das Höhe/
@@ -47,7 +51,40 @@
   .field input[type=date]{
     -webkit-appearance:none; appearance:none; min-height:36px;
   }
-  .field input:focus, .field select:focus{ outline:1px solid var(--accent); }
+  .field input:focus, .field select:focus{ outline:2px solid var(--accent); outline-offset:1px; }
+  /* Deutlich sichtbarer Tastatur-Fokus für alle Bedienelemente (WCAG 2.4.7) - nur bei Tastatur-
+     bedienung (:focus-visible), damit Maus-Klicks keinen Rahmen hinterlassen. */
+  button:focus-visible, a:focus-visible, select:focus-visible, input:focus-visible,
+  [tabindex]:focus-visible, summary:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
+  /* Nur für Screenreader sichtbarer Text (Tabellen-Beschriftungen, Diagramm-Beschreibung usw.). */
+  .visually-hidden{
+    position:absolute !important; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden;
+    clip:rect(0 0 0 0); white-space:nowrap; border:0;
+  }
+  /* Kleine Buttons (vorher als identischer Inline-Style an vielen Stellen wiederholt). */
+  .btn-sm{ padding:6px 12px; font-size:0.8rem; }
+  .btn-xs{ padding:2px 8px; font-size:0.72rem; }
+  /* Gemeinsamer Look der Einstellungs-/Standort-Dialoge (vorher je Dialog als Inline-Style). */
+  dialog.modal{
+    background:var(--panel); border:1px solid var(--border); border-radius:var(--radius);
+    max-width:480px; width:100%; padding:22px 24px; color:var(--text);
+  }
+  dialog.modal.modal-wide{ max-width:640px; max-height:90vh; overflow:auto; }
+  dialog.modal::backdrop{ background:rgba(5,8,14,0.6); }
+  .modal-head{ display:flex; justify-content:space-between; align-items:flex-start; gap:12px; }
+  .modal-head h2{ margin-top:0; }
+  .btn-close{ padding:2px 11px; font-size:1.05rem; line-height:1.3; border-radius:6px; margin-top:-2px; }
+  .modal-actions{ display:flex; gap:8px; margin-top:22px; justify-content:flex-end; }
+  /* Stützpunkt-Tabellen im Standort-Fenster */
+  .profile-table{ width:100%; border-collapse:collapse; margin-bottom:6px; }
+  .profile-table th{ text-align:left; font-size:0.78rem; color:var(--muted); padding:4px; cursor:default; position:static; background:none; border:none; }
+  .profile-table td{ padding:3px 4px; border:none; }
+  .profile-input{
+    background:var(--panel2); border:1px solid var(--input-border); color:var(--text);
+    border-radius:6px; padding:5px 6px;
+  }
+  .profile-input[type=number]{ width:70px; }
+  .profile-input[type=text]{ width:100%; }
   .field input[readonly]{ opacity:0.7; cursor:default; }
   /* Hoch-/Runter-Pfeile bei Zahlenfeldern ausblenden - es wird ausschließlich manuell eingetragen,
      die Spinner-Pfeile werden nicht benötigt (gilt für alle Zahlenfelder, auch außerhalb von .field,
@@ -55,7 +92,6 @@
   input[type=number]::-webkit-outer-spin-button,
   input[type=number]::-webkit-inner-spin-button{ -webkit-appearance:none; margin:0; }
   input[type=number]{ -moz-appearance:textfield; appearance:textfield; }
-  #locationModal::backdrop{ background:rgba(5,8,14,0.6); }
   .checkline{ display:flex; align-items:center; gap:8px; font-size:0.85rem; color:var(--muted); margin-bottom:8px; }
   .checkline input{ accent-color:var(--accent); }
   button{
@@ -86,7 +122,16 @@
   #fallback{ display:none; margin-top:14px; padding:14px; background:var(--panel2); border-radius:8px; border:1px dashed var(--border); font-size:0.85rem; }
   #fallback a{ color:var(--accent); word-break:break-all; }
   #fallback input[type=file]{ margin-top:8px; }
-  .compass-wrap{ display:flex; gap:18px; align-items:center; flex-wrap:wrap; justify-content:center; }
+  .compass-wrap{ display:flex; flex-direction:column; gap:8px; align-items:center; margin-top:14px; }
+  /* Diagramm skaliert auf schmalen Handys mit (vorher feste 320 px -> horizontales Überlaufen).
+     touch-action: Ein-Finger-Wischen scrollt weiter die Seite, Zwei-Finger-Zoom übernimmt das
+     Diagramm selbst (siehe Pinch-Zoom im Script) statt die ganze Seite zu vergrößern. */
+  #compassSvg{ max-width:100%; height:auto; touch-action:pan-x pan-y; }
+  .compass-zoom{ display:flex; gap:6px; }
+  .compass-zoom button{ min-width:44px; }
+  .compass-legend{ list-style:none; margin:4px 0 0; padding:0; display:flex; flex-wrap:wrap; gap:4px 14px; justify-content:center; font-size:0.76rem; color:var(--muted); }
+  .compass-legend li{ display:flex; align-items:center; gap:5px; }
+  .compass-legend svg{ flex:0 0 auto; }
   svg text{ fill:var(--muted); font-size:9px; }
   #compassTooltip{
     position:fixed; display:none; background:var(--panel2); border:1px solid var(--border);
@@ -99,6 +144,11 @@
     border-bottom:1px solid var(--border); cursor:pointer; white-space:nowrap; color:var(--muted); font-weight:600;
   }
   thead th:hover{ color:var(--text); }
+  thead th:not([data-key]){ cursor:default; }
+  thead th[data-key]:focus-visible{ outline:2px solid var(--accent); outline-offset:-2px; color:var(--text); }
+  thead th[aria-sort="ascending"]::after{ content:" \25B2"; font-size:0.7em; }
+  thead th[aria-sort="descending"]::after{ content:" \25BC"; font-size:0.7em; }
+  tbody tr[tabindex]:focus-visible{ outline:2px solid var(--accent); outline-offset:-2px; }
   tbody td{ padding:7px 8px; border-bottom:1px solid var(--border); vertical-align:top; }
   tbody tr{ cursor:pointer; }
   tbody tr:hover{ background:rgba(255,255,255,0.03); }
@@ -124,7 +174,7 @@
   .result-name-link{ color:var(--accent); text-decoration:none; }
   .result-name-link:hover{ text-decoration:underline; }
   .toolbar{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:12px; }
-  .toolbar input[type=text]{ background:var(--panel2); border:1px solid var(--border); color:var(--text); border-radius:7px; padding:7px 10px; font-size:0.85rem; }
+  .toolbar input[type=text]{ background:var(--panel2); border:1px solid var(--input-border); color:var(--text); border-radius:7px; padding:7px 10px; font-size:0.85rem; }
   code{ background:var(--panel2); padding:1px 5px; border-radius:4px; font-size:0.85em; }
   .count-pill{ background:var(--panel2); border:1px solid var(--border); border-radius:999px; padding:4px 12px; font-size:0.78rem; color:var(--muted); }
   .docview h2{ font-size:1.15rem; margin:32px 0 10px; }
@@ -140,6 +190,17 @@
     font-size:0.85rem; z-index:2000; opacity:0; transition:opacity 0.2s;
   }
   .toast.show{ opacity:1; }
+  /* "Bewegung reduzieren" (Systemeinstellung) respektieren: keine Ein-/Ausblend-Animationen. */
+  @media (prefers-reduced-motion: reduce){
+    .toast, #camToast{ transition:none; }
+  }
+  /* Handy: weniger Seitenrand, damit Tabellen und Diagramm mehr Platz haben. */
+  @media (max-width:600px){
+    header{ padding:20px 12px 14px; }
+    main{ padding:0 12px 48px; }
+    .docview{ padding:0 12px 48px; }
+    .card{ padding:14px; }
+  }
 
   /* ================= Kamera-Vermessung (#cameraModal) =================
      Portiert aus der vom Nutzer bereitgestellten "Azimuth und Höhenwinkel.html" (Kamerabild +
@@ -260,10 +321,10 @@
 
 <main id="plannerView">
 
-  <div class="toolbar mode-toolbar" style="margin-bottom:18px;">
-    <button type="button" id="modeExoBtn">Exoplaneten</button>
-    <button type="button" id="modeDsoBtn" class="secondary"><span class="lbl-long">Deep-Sky-Objekte</span><span class="lbl-short">Deep-Sky</span></button>
-    <button type="button" id="modeNowBtn" class="secondary">Jetzt</button>
+  <div class="toolbar mode-toolbar" role="group" aria-label="Modus" style="margin-bottom:18px;">
+    <button type="button" id="modeExoBtn" aria-pressed="true">Exoplaneten</button>
+    <button type="button" id="modeDsoBtn" class="secondary" aria-pressed="false"><span class="lbl-long">Deep-Sky-Objekte</span><span class="lbl-short">Deep-Sky</span></button>
+    <button type="button" id="modeNowBtn" class="secondary" aria-pressed="false">Jetzt</button>
   </div>
 
   <div class="grid">
@@ -271,13 +332,13 @@
       <div class="card">
         <h2>1. Standort &amp; Sichtfenster</h2>
         <div class="field" style="margin-bottom:10px;">
-          <label>Standort</label>
-          <div id="locationTiles" style="display:flex; flex-wrap:wrap; gap:6px;"></div>
+          <label id="locTilesLabel">Standort</label>
+          <div id="locationTiles" role="group" aria-labelledby="locTilesLabel" style="display:flex; flex-wrap:wrap; gap:6px;"></div>
         </div>
         <div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:14px;">
-          <button type="button" id="newLocationBtn" class="secondary" style="padding:6px 12px; font-size:0.8rem;">+ Neuer Standort</button>
-          <button type="button" id="editLocationBtn" class="secondary" style="padding:6px 12px; font-size:0.8rem;">Bearbeiten</button>
-          <button type="button" id="deleteLocationBtn" class="secondary" style="padding:6px 12px; font-size:0.8rem;">Löschen</button>
+          <button type="button" id="newLocationBtn" class="secondary btn-sm">+ Neuer Standort</button>
+          <button type="button" id="editLocationBtn" class="secondary btn-sm">Bearbeiten</button>
+          <button type="button" id="deleteLocationBtn" class="secondary btn-sm">Löschen</button>
         </div>
         <p class="small" id="githubSyncHint" style="display:none; margin:-6px 0 12px;"></p>
         <!-- Die GitHub-Sync-Werkzeuge (Laden/Exportieren/Senden/Sync-Einstellungen) sitzen seit V2.23
@@ -304,13 +365,28 @@
           <div class="field"><label for="azStart">Azimut-Start (&deg;, harte Grenze)</label><input type="number" id="azStart" value="180" min="0" max="360" readonly></div>
           <div class="field"><label for="azEnd">Azimut-Ende (&deg;, harte Grenze)</label><input type="number" id="azEnd" value="313" min="0" max="360" readonly></div>
         </div>
-        <div class="compass-wrap" style="margin-top:14px; flex-direction:column; gap:4px;">
-          <svg id="compassSvg" width="320" height="320" viewBox="0 0 320 320"></svg>
-          <p class="small" style="margin:0;">Mit dem Mausrad zum Mauszeiger hin zoomen (hoch = rein, runter = raus); Doppelklick setzt den Zoom zurück.</p>
+        <div class="compass-wrap">
+          <p id="compassTitle" class="visually-hidden">Polardiagramm des Sichtfensters: Mitte = Zenit, Rand = Horizont, Norden oben.</p>
+          <svg id="compassSvg" width="320" height="320" viewBox="0 0 320 320" role="img" aria-labelledby="compassTitle" aria-describedby="compassDesc"></svg>
+          <p id="compassDesc" class="visually-hidden"></p>
+          <div class="compass-zoom" role="group" aria-label="Diagramm-Zoom">
+            <button type="button" class="secondary btn-sm" id="compassZoomOut" aria-label="Herauszoomen">&minus;</button>
+            <button type="button" class="secondary btn-sm" id="compassZoomIn" aria-label="Hineinzoomen">+</button>
+            <button type="button" class="secondary btn-sm" id="compassZoomReset">Zoom zurücksetzen</button>
+          </div>
+          <ul class="compass-legend" aria-label="Legende zum Diagramm">
+            <li><svg width="18" height="12" viewBox="0 0 18 12" aria-hidden="true" focusable="false"><rect x="1" y="1" width="16" height="10" fill="#5fb3ff" fill-opacity="0.32" stroke="#5fb3ff" stroke-width="1.5"/></svg>Nutzbarer Himmel</li>
+            <li><svg width="18" height="12" viewBox="0 0 18 12" aria-hidden="true" focusable="false"><rect x="1" y="1" width="16" height="10" fill="#f4c258" fill-opacity="0.18" stroke="#f4c258" stroke-dasharray="3 2"/></svg>Puffer 5&deg;</li>
+            <li><svg width="18" height="12" viewBox="0 0 18 12" aria-hidden="true" focusable="false"><circle cx="9" cy="6" r="3.5" fill="#f4c258"/></svg>Punkt untere Grenze</li>
+            <li><svg width="18" height="12" viewBox="0 0 18 12" aria-hidden="true" focusable="false"><polygon points="9,1.5 13.5,6 9,10.5 4.5,6" fill="#a78bfa"/></svg>Punkt obere Grenze</li>
+            <li><svg width="18" height="12" viewBox="0 0 18 12" aria-hidden="true" focusable="false"><line x1="1" y1="6" x2="17" y2="6" stroke="#ff8c42" stroke-width="2.5"/></svg>Bahn</li>
+            <li><svg width="18" height="12" viewBox="0 0 18 12" aria-hidden="true" focusable="false"><circle cx="9" cy="6" r="4.5" fill="#7ee7c7"/></svg>Start</li>
+            <li><svg width="18" height="12" viewBox="0 0 18 12" aria-hidden="true" focusable="false"><rect x="4.5" y="1.5" width="9" height="9" fill="#f2687a"/></svg>Ende</li>
+          </ul>
         </div>
         <div id="highlightInfo">
           Bahn im Diagramm: <strong id="highlightName"></strong>
-          <button type="button" id="clearHighlight" class="secondary" style="padding:2px 8px; font-size:0.72rem; margin-left:6px;">Zurücksetzen</button>
+          <button type="button" id="clearHighlight" class="secondary btn-xs" style="margin-left:6px;">Zurücksetzen</button>
         </div>
       </div>
     </div>
@@ -343,11 +419,11 @@
         <div class="checkline"><input type="checkbox" id="hideUnknownMag"> <label for="hideUnknownMag">Objekte ohne bekannte Helligkeit ausblenden</label></div>
         <div class="checkline"><input type="checkbox" id="hideUnknownDepth"> <label for="hideUnknownDepth">Objekte ohne bekannte Transittiefe ausblenden</label></div>
         <div style="display:flex; flex-direction:column; gap:3px; margin-top:8px;">
-          <button id="loadBtn">Daten laden (NASA Exoplanet Archive)</button>
-          <button id="recomputeBtn" class="secondary" disabled>Neu berechnen (gleiche Daten, neue Filter)</button>
-          <button type="button" id="exoWorkerSettingsBtn" class="secondary" style="padding:6px 12px; font-size:0.8rem;" title="Die kostenlosen öffentlichen CORS-Proxys sind unzuverlässig bzw. inzwischen teils abgeschaltet/kostenpflichtig. Ein eigener, kostenloser Cloudflare Worker als Proxy behebt das dauerhaft.">Eigener Proxy-Worker (optional, empfohlen)</button>
+          <button type="button" id="loadBtn">Daten laden (NASA Exoplanet Archive)</button>
+          <button type="button" id="recomputeBtn" class="secondary" disabled>Neu berechnen (gleiche Daten, neue Filter)</button>
+          <button type="button" id="exoWorkerSettingsBtn" class="secondary btn-sm" title="Die kostenlosen öffentlichen CORS-Proxys sind unzuverlässig bzw. inzwischen teils abgeschaltet/kostenpflichtig. Ein eigener, kostenloser Cloudflare Worker als Proxy behebt das dauerhaft.">Eigener Proxy-Worker (optional, empfohlen)</button>
         </div>
-        <div id="status"></div>
+        <div id="status" role="status" aria-live="polite"></div>
         <div id="loadLog" class="small" style="margin-top:6px; display:flex; flex-direction:column; gap:2px;"></div>
         <div id="fallback">
           <strong>Alle automatischen Wege sind fehlgeschlagen.</strong><br>
@@ -389,7 +465,7 @@
 
       <div class="card">
         <h2>Zusammenfassung</h2>
-        <div id="summary" class="small">Noch keine Daten geladen.</div>
+        <div id="summary" class="small" aria-live="polite">Noch keine Daten geladen.</div>
       </div>
     </div>
   </div>
@@ -402,6 +478,7 @@
     </div>
     <div class="tablewrap">
       <table id="resultsTable">
+        <caption class="visually-hidden">Beobachtbare Transits – Spaltenköpfe sortieren per Klick oder Enter; eine Zeile per Klick oder Enter auswählen, um ihre Bahn im Diagramm zu zeigen.</caption>
         <thead>
           <tr>
             <th data-key="pl_name" title="Name des Exoplaneten (NASA-Bezeichnung, Wirtsstern + Buchstabe)">Planet</th>
@@ -413,6 +490,7 @@
             <th data-key="altRange" title="Minimale und maximale Höhe des Objekts über dem Horizont während des Beobachtungsfensters">Höhe</th>
             <th data-key="azRange" title="Azimut (Kompassrichtung, 0°=Nord) des Objekts zu Beginn und Ende des Kern-Transits">Azimut</th>
             <th data-key="status" title="Ob der komplette Zeitraum inkl. Rand innerhalb des Sichtfensters liegt, oder nur der Kern-Transit">Status</th>
+            <th title="Mond zum angegebenen Zeitpunkt: Winkelabstand zum Objekt und Beleuchtung; „hell &amp; nah“ = mehr als halb beleuchtet und näher als 45°">Mond</th>
             <th title="Externe Links: NASA-Systemübersicht des Wirtssterns und Stellarium-Fokus (siehe Doku)">Links</th>
           </tr>
         </thead>
@@ -429,6 +507,7 @@
     </div>
     <div class="tablewrap">
       <table id="resultsTableDso">
+        <caption class="visually-hidden">Beobachtbare Deep-Sky-Objekte – Spaltenköpfe sortieren per Klick oder Enter; eine Zeile per Klick oder Enter auswählen, um ihre Bahn im Diagramm zu zeigen.</caption>
         <thead>
           <tr>
             <th data-key="name" title="Katalogname (Messier-Nummer bevorzugt) und, falls bekannt, gebräuchlicher Name">Objekt</th>
@@ -439,6 +518,7 @@
             <th data-key="nights" title="Nächte im gewählten Zeitraum, in denen das Objekt mindestens einmal gleichzeitig im Sichtfenster und am dunklen Himmel steht">Beobachtbar</th>
             <th data-key="maxWindow" title="Längste zusammenhängende Zeit, die das Objekt in der besten Nacht durchgehend im Sichtfenster und am dunklen Himmel stand">Max. Zeit im Fenster</th>
             <th data-key="tmid" title="Beste einzelne Nacht im Zeitraum: Zeitfenster und maximal erreichte Höhe">Beste Nacht</th>
+            <th title="Mond zum angegebenen Zeitpunkt: Winkelabstand zum Objekt und Beleuchtung; „hell &amp; nah“ = mehr als halb beleuchtet und näher als 45°">Mond</th>
             <th title="Externer Link: Stellarium-Fokus (siehe Doku)">Links</th>
           </tr>
         </thead>
@@ -455,6 +535,7 @@
     </div>
     <div class="tablewrap">
       <table id="resultsTableNow">
+        <caption class="visually-hidden">Jetzt sichtbare Objekte – Spaltenköpfe sortieren per Klick oder Enter; eine Zeile per Klick oder Enter auswählen, um ihre Bahn im Diagramm zu zeigen.</caption>
         <thead>
           <tr>
             <th data-key="name" title="Katalogname (Messier-Nummer bevorzugt) und, falls bekannt, gebräuchlicher Name">Objekt</th>
@@ -464,6 +545,7 @@
             <th data-key="size" title="Scheinbare Größe (längste Achse) in Bogenminuten">Größe</th>
             <th data-key="curAlt" title="Aktuelle Höhe und Azimut des Objekts">Jetzt (Höhe/Az.)</th>
             <th data-key="remaining" title="Zeitpunkt, bis zu dem das Objekt ununterbrochen im Sichtfenster und am dunklen Himmel bleibt, und die verbleibende Dauer">Sichtbar bis</th>
+            <th title="Mond zum angegebenen Zeitpunkt: Winkelabstand zum Objekt und Beleuchtung; „hell &amp; nah“ = mehr als halb beleuchtet und näher als 45°">Mond</th>
             <th title="Externe Links: Wikipedia und Stellarium-Fokus (siehe Doku)">Links</th>
           </tr>
         </thead>
@@ -480,12 +562,14 @@
     </div>
     <div class="tablewrap">
       <table id="resultsTableDsoNights">
+        <caption class="visually-hidden">Nächte für das gewählte Objekt – beobachtbare Nächte per Klick oder Enter auswählen, um ihre Bahn im Diagramm zu zeigen.</caption>
         <thead>
           <tr>
             <th title="Kalenderdatum, an dem die jeweilige Nacht beginnt">Nacht</th>
             <th title="Zeitfenster, in dem das Objekt gleichzeitig im Sichtfenster und am dunklen Himmel steht">Zeitfenster</th>
             <th title="Länge des zusammenhängenden Sichtbarkeitsfensters">Dauer</th>
             <th title="Maximal erreichte Höhe während des Fensters">Max. Höhe</th>
+            <th title="Mond zur Fenstermitte: Winkelabstand zum Objekt und Beleuchtung">Mond</th>
           </tr>
         </thead>
         <tbody id="resultsBodyDsoNights"></tbody>
@@ -495,10 +579,10 @@
 
 </main>
 
-<div class="docview" id="docView" style="display:none;">
+<section class="docview" id="docView" aria-label="Dokumentation" style="display:none;">
   <button type="button" id="backToPlannerBtn" style="margin:20px 0 10px;">&larr; Zurück zum Planer</button>
 
-  <p class="small">Version: V2.24</p>
+  <p class="small">Version: V2.26</p>
   <h2>Überblick</h2>
   <p>
     Dieses Tool findet Himmelsobjekte, die mit einem Linsenteleskop (432&nbsp;mm Brennweite, 72&nbsp;mm
@@ -569,10 +653,10 @@
     Versuch), „Sync-Einstellungen“ öffnet das Eingabefenster für Worker-URL und Zugriffs-Schlüssel.
   </p>
   <div style="display:flex; flex-wrap:wrap; gap:8px; margin:0 0 20px;">
-    <button type="button" id="githubLoadBtn" class="secondary" style="padding:6px 12px; font-size:0.8rem;" title="Lädt standorte.json aus demselben Ordner wie diese Seite (GitHub Pages/lokaler Server) und ersetzt die aktuelle Liste damit.">Von GitHub laden</button>
-    <button type="button" id="githubExportBtn" class="secondary" style="padding:6px 12px; font-size:0.8rem;" title="Exportiert ALLE Standorte als standorte.json, zum Hochladen in den GitHub-Pages-Ordner (siehe oben).">Für GitHub exportieren</button>
-    <button type="button" id="githubPushBtn" class="secondary" style="padding:6px 12px; font-size:0.8rem;" title="Sendet ALLE Standorte über den Sync-Worker nach GitHub (Einrichtung: siehe 'Sync-Einstellungen').">Jetzt zu GitHub senden</button>
-    <button type="button" id="githubSyncSettingsBtn" class="secondary" style="padding:6px 12px; font-size:0.8rem;">Sync-Einstellungen</button>
+    <button type="button" id="githubLoadBtn" class="secondary btn-sm" title="Lädt standorte.json aus demselben Ordner wie diese Seite (GitHub Pages/lokaler Server) und ersetzt die aktuelle Liste damit.">Von GitHub laden</button>
+    <button type="button" id="githubExportBtn" class="secondary btn-sm" title="Exportiert ALLE Standorte als standorte.json, zum Hochladen in den GitHub-Pages-Ordner (siehe oben).">Für GitHub exportieren</button>
+    <button type="button" id="githubPushBtn" class="secondary btn-sm" title="Sendet ALLE Standorte über den Sync-Worker nach GitHub (Einrichtung: siehe 'Sync-Einstellungen').">Jetzt zu GitHub senden</button>
+    <button type="button" id="githubSyncSettingsBtn" class="secondary btn-sm">Sync-Einstellungen</button>
   </div>
   <dl>
     <dt>Client &rarr; Worker</dt>
@@ -605,24 +689,34 @@
   </p>
   <p>
     Azimut-Start/-Ende sind die harte seitliche Begrenzung (außerhalb gilt der Himmel als nicht einsehbar);
-    für uneingeschränkte Rundumsicht 0&deg;/360&deg; eintragen. Dazwischen definieren zwei unabhängige
+    das Fenster läuft vom Start im Uhrzeigersinn bis zum Ende. Seit V2.26 darf es auch über Norden
+    hinweg reichen (z.&nbsp;B. 300&deg; &rarr; 60&deg;); für uneingeschränkte Rundumsicht 0&deg;/360&deg;
+    eintragen. Dazwischen definieren zwei unabhängige
     Stützpunkt-Profile den nutzbaren Himmelsausschnitt: die <strong>untere Grenze</strong> (Mindesthöhe
     je Azimut, für Hindernisse von unten/seitlich wie Haus oder Baum &ndash; auch bei sonst freier
     Rundumsicht, z.&nbsp;B. ein einzelnes Haus in einer Richtung) und die <strong>obere Grenze</strong>
     (Obergrenze je Azimut, für Verdeckungen von oben, z.&nbsp;B. einen Balkon darüber). Beide werden
     unabhängig voneinander linear zwischen ihren Punkten interpoliert; außerhalb des ersten/letzten
-    Punkts gilt dessen Wert weiter (kein Extrapolieren). Die untere Grenze darf auch negativ sein
+    Punkts gilt dessen Wert weiter (kein Extrapolieren). Ausnahme Rundumsicht: Dort wird über Norden
+    hinweg zwischen dem letzten und dem ersten Punkt interpoliert, weil der Horizont dort durchgehend ist.
+    Ein Standort ganz ohne Stützpunkte der unteren Grenze gilt als freier Horizont (0&deg;); bis V2.25 war
+    dann fälschlich gar nichts sichtbar. Die untere Grenze darf auch negativ sein
     (bis &minus;90&deg;) &ndash; relevant bei erhöhter Beobachtungsposition (z.&nbsp;B. Balkon über der
     Umgebung), wenn der tatsächliche Horizont unterhalb der 0&deg;-Ebene liegt; solche Werte werden
     unverändert übernommen, auch beim Vermessen per Kamera. Im Polardiagramm zeigt
     die blaue Fläche den tatsächlich nutzbaren Himmelsausschnitt (Kernfläche, siehe Sicherheitspuffer
-    unten); kleine gelbe Punkte sind Stützpunkte der unteren, kleine violette Punkte der oberen Grenze.
+    unten); gelbe Kreise sind Stützpunkte der unteren, violette Rauten Stützpunkte der oberen Grenze.
+    Eine Legende steht direkt unter dem Diagramm.
     Ein Klick auf eine Zeile der Ergebnistabelle zeigt deren Bahn (orange) im Diagramm; erneutes
     Anklicken derselben Zeile, „Zurücksetzen“ oder das Anklicken einer anderen Zeile blendet die
-    Markierung wieder aus bzw. wechselt sie. Mit dem Mausrad über dem Diagramm lässt sich hinein-
+    Markierung wieder aus bzw. wechselt sie; die Bahn beginnt am grünen Kreis und endet am roten Quadrat.
+    Mit dem Mausrad über dem Diagramm lässt sich hinein-
     (hoch scrollen) bzw. herauszoomen (runter scrollen), und zwar zur jeweiligen Position des
     Mauszeigers hin (wie bei Karten üblich) statt starr zur Diagrammmitte; ein Doppelklick auf das
-    Diagramm setzt den Zoom zurück.
+    Diagramm setzt den Zoom zurück. Am Handy zoomt man mit zwei Fingern; die Knöpfe „+“, „&minus;“ und
+    „Zoom zurücksetzen“ unter dem Diagramm funktionieren überall, auch per Tastatur. Die Werte eines
+    Stützpunkts oder Bahnpunkts erscheinen beim Darüberfahren mit der Maus bzw. am Handy beim Antippen
+    (ein Tipp in die Nähe genügt).
   </p>
   <p>
     <strong>Sicherheitspuffer (5&deg;):</strong> Die Stützpunkte selbst sind exakt gemessen, aber
@@ -646,7 +740,8 @@
   <p>
     Start-Datum und Anzahl Nächte grenzen den Suchzeitraum ein. Ein Transit wird nur akzeptiert, wenn das
     gesamte Beobachtungsfenster unterhalb der gewählten Dämmerungsgrenze liegt (vereinfachte Sonnenposition,
-    für Dämmerungszeiten ausreichend genau). Mondlicht wird nicht berücksichtigt.
+    für Dämmerungszeiten ausreichend genau). Mondlicht schließt keine Ergebnisse aus, wird aber in allen
+    Ergebnistabellen in der Spalte „Mond“ angezeigt (siehe Ergebnistabelle).
   </p>
 
   <h2>3. Zielauswahl: Exoplaneten vs. Deep-Sky</h2>
@@ -676,7 +771,8 @@
     Kategorien (Galaxien, Sternhaufen, Nebel) lassen sich einzeln abwählen; „Nur Messier-Objekte“
     beschränkt auf die 107 im Katalog enthaltenen Messier-Objekte. Der Katalog ist fest eingebettet, daher
     gibt es hier &ndash; anders als bei den Exoplaneten &ndash; keinen „Daten laden“-Schritt; der Knopf
-    „Deep-Sky-Objekte berechnen“ reicht.
+    „Deep-Sky-Objekte berechnen“ reicht. Die Berechnung läuft in Etappen mit Fortschrittsanzeige im Knopf,
+    die Seite bleibt dabei bedienbar; ein Standortwechsel bricht sie ab.
   </p>
 
   <h3>Jetzt</h3>
@@ -691,8 +787,10 @@
     Zusammenfassung). Start-Datum und Anzahl Nächte werden in diesem Modus ausgeblendet, da aktuelle
     Uhrzeit und aktueller Tag den Zeitraum festlegen; Abschnitt&nbsp;2 heißt dann nur „Dunkelheit“ und
     enthält nur noch die Dämmerungsgrenze.
-    Die Ergebnisse gelten für den Moment der Berechnung &ndash; bei längerer Nutzung „Aktualisieren“
-    erneut anklicken. Ein Klick auf eine Zeile zeigt die verbleibende Bahn (ab jetzt) im Polardiagramm.
+    Die Liste aktualisiert sich automatisch alle 10&nbsp;Minuten, solange „Jetzt“ gewählt und die Seite
+    sichtbar ist; eine gewählte Bahn bleibt dabei markiert. „Aktualisieren“ rechnet sofort neu. Ein Klick
+    auf eine Zeile zeigt die verbleibende Bahn (ab jetzt) im Polardiagramm. Die Zusammenfassung nennt
+    zusätzlich Mondphase und Mondhöhe.
   </p>
 
   <h2>Datenquelle &amp; Laden</h2>
@@ -751,7 +849,16 @@
       &rarr; Plugins &rarr; Remote Control &rarr; Configure &rarr; <strong>„Server enabled“</strong> muss
       angehakt sein. „Enable CORS for the following“ wird <strong>nicht</strong> benötigt, da alle Befehle im
       <code>no-cors</code>-Modus gesendet werden. Erfolg/Misserfolg der drei Teilbefehle (Zeit, Ansicht,
-      Markierung) wird einzeln als Meldung angezeigt.</dd>
+      Markierung) wird einzeln als Meldung angezeigt. Wird das Tool über HTTPS (GitHub Pages) genutzt,
+      blockieren manche Browser Anfragen an <code>http://localhost</code>: Safari grundsätzlich, Chrome
+      fragt ggf. nach dem Zugriff auf Geräte im lokalen Netzwerk (erlauben). Klappt es nicht, das Tool
+      lokal über „Transit-Planer starten.command“ öffnen.</dd>
+    <dt>Mond</dt>
+    <dd>Zur Transitmitte (Exoplaneten), zur Mitte der besten Nacht (Deep-Sky), zur Mitte des jeweiligen
+      Fensters (Nacht-für-Nacht) bzw. jetzt („Jetzt“): Winkelabstand des Mondes zum Objekt und seine
+      Phase, oder „unter Horizont“. „hell &amp; nah“ markiert einen mehr als halb beleuchteten Mond näher
+      als 45&deg; &ndash; dann ist mit deutlich aufgehelltem Himmel zu rechnen. Die Spalte ist nur ein
+      Hinweis, Ergebnisse werden deshalb nicht ausgeblendet.</dd>
   </dl>
 
   <h3>Deep-Sky-Objekte</h3>
@@ -785,8 +892,20 @@
     linear fortgeschrieben; die als BJD_TDB angegebene Referenzzeit wird ohne Lichtlaufzeit-Korrektur wie UTC
     behandelt (Abweichung bis ca. &plusmn;9&nbsp;Minuten, bei veralteter Ephemeride ggf. deutlich mehr). Jedes
     Ereignis sollte daher kurz vor der Beobachtung gegengeprüft werden (var.astro.cz, ETD). Sichtbarkeit wird
-    über Standard-Formeln für Stundenwinkel/Höhe/Azimut und eine vereinfachte Sonnenposition berechnet;
-    Mondphase/-abstand wird nicht berücksichtigt.
+    über Standard-Formeln für Stundenwinkel/Höhe/Azimut und eine vereinfachte Sonnenposition berechnet.
+    Die Mondposition stammt aus der Kurzformel des „Astronomical Almanac“ (gegen PyEphem geprüft:
+    Position auf ca. 0,2&deg;, Höhe inkl. Parallaxe auf ca. 0,2&deg;, Beleuchtung auf 0,1&nbsp;% genau).
+  </p>
+
+  <h2>Bedienung per Tastatur &amp; Barrierefreiheit</h2>
+  <p>
+    Alle Funktionen sind ohne Maus erreichbar: Mit Tab springt man durch Knöpfe, Felder, Spaltenköpfe
+    und Ergebniszeilen. Enter oder Leertaste auf einem Spaltenkopf sortiert, auf einer Ergebniszeile
+    wählt sie aus (Bahn im Diagramm bzw. Nacht-für-Nacht-Ansicht). Escape schließt Dialoge wie
+    „Abbrechen“. Screenreader lesen den aktiven Modus und Standort, die Sortierung, die gewählte Zeile,
+    Statusmeldungen sowie eine Textfassung des Polardiagramms vor. Bei aktivierter Systemeinstellung
+    „Bewegung reduzieren“ springt die Seite ohne Animation. Längere Meldungen bleiben je nach Länge
+    4&ndash;12&nbsp;Sekunden stehen.
   </p>
 
   <h2>Quellen</h2>
@@ -798,15 +917,15 @@
     (CC-BY-SA-4.0). Stellarium Remote-Control-API:
     <a href="https://stellarium.org/doc/23.0/remoteControlApi.html" target="_blank">stellarium.org Dokumentation</a>.
   </p>
-</div>
+</section>
 
-<div id="compassTooltip"></div>
-<div id="toast" class="toast"></div>
+<div id="compassTooltip" aria-hidden="true"></div>
+<div id="toast" class="toast" role="status" aria-live="polite" aria-atomic="true"></div>
 
-<dialog id="locationModal" style="background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); max-width:640px; width:100%; max-height:90vh; overflow:auto; padding:22px 24px; color:var(--text);">
-  <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px;">
-    <h2 id="locationModalTitle" style="margin-top:0;">Neuer Standort</h2>
-    <button type="button" id="locCloseXBtn" class="secondary" aria-label="Schließen" title="Schließen (wie Abbrechen)" style="padding:2px 11px; font-size:1.05rem; line-height:1.3; border-radius:6px; margin-top:-2px;">&times;</button>
+<dialog id="locationModal" class="modal modal-wide">
+  <div class="modal-head">
+    <h2 id="locationModalTitle">Neuer Standort</h2>
+    <button type="button" id="locCloseXBtn" class="secondary btn-close" aria-label="Schließen" title="Schließen (wie Abbrechen)">&times;</button>
   </div>
   <div class="field-row">
     <div class="field" style="flex:1 1 100%;"><label for="locName">Name</label><input type="text" id="locName" placeholder="z.B. Bundesplatz"></div>
@@ -825,37 +944,37 @@
     <div class="field"><label for="locAzStart">Azimut-Start (&deg;)</label><input type="number" id="locAzStart" min="0" max="360"></div>
     <div class="field"><label for="locAzEnd">Azimut-Ende (&deg;)</label><input type="number" id="locAzEnd" min="0" max="360"></div>
   </div>
-  <p class="small" style="margin:2px 0 14px;">Für uneingeschränkte Rundumsicht: 0&deg; / 360&deg;.</p>
+  <p class="small" style="margin:2px 0 14px;">Für uneingeschränkte Rundumsicht: 0&deg; / 360&deg;. Ein Fenster über Norden hinweg ist möglich, z.&nbsp;B. 300&deg; / 60&deg;.</p>
 
   <p class="small" style="margin:14px 0 4px; display:flex; justify-content:space-between;"><span>Untere Grenze (Hindernisse von unten/seitlich, z.&nbsp;B. Haus, Baum)</span><span id="locHorizonCount" class="small"></span></p>
-  <table style="width:100%; border-collapse:collapse; margin-bottom:6px;">
+  <table class="profile-table">
     <thead>
       <tr>
-        <th style="text-align:left; font-size:0.78rem; color:var(--muted); padding:4px 4px;">Azimut (&deg;)</th>
-        <th style="text-align:left; font-size:0.78rem; color:var(--muted); padding:4px 4px;">Mindesthöhe dort (&deg;)</th>
-        <th style="text-align:left; font-size:0.78rem; color:var(--muted); padding:4px 4px;">Hindernis</th>
-        <th></th>
+        <th>Azimut (&deg;)</th>
+        <th>Mindesthöhe dort (&deg;)</th>
+        <th>Hindernis</th>
+        <th><span class="visually-hidden">Entfernen</span></th>
       </tr>
     </thead>
     <tbody id="locHorizonRows"></tbody>
   </table>
-  <button type="button" id="locAddHorizonRow" class="secondary" style="padding:6px 12px; font-size:0.8rem;">+ Stützpunkt hinzufügen (unten)</button><!--
-  --><button type="button" id="locSurveyHorizonBtn" class="secondary" style="padding:6px 12px; font-size:0.8rem; margin-left:3pt;">Vermessen</button>
+  <button type="button" id="locAddHorizonRow" class="secondary btn-sm">+ Stützpunkt hinzufügen (unten)</button><!--
+  --><button type="button" id="locSurveyHorizonBtn" class="secondary btn-sm" style="margin-left:3pt;">Vermessen</button>
 
   <p class="small" style="margin:16px 0 4px; display:flex; justify-content:space-between;"><span>Obere Grenze (Verdeckung von oben, z.&nbsp;B. Balkon darüber)</span><span id="locCeilingCount" class="small"></span></p>
-  <table style="width:100%; border-collapse:collapse; margin-bottom:6px;">
+  <table class="profile-table">
     <thead>
       <tr>
-        <th style="text-align:left; font-size:0.78rem; color:var(--muted); padding:4px 4px;">Azimut (&deg;)</th>
-        <th style="text-align:left; font-size:0.78rem; color:var(--muted); padding:4px 4px;">Obergrenze dort (&deg;)</th>
-        <th style="text-align:left; font-size:0.78rem; color:var(--muted); padding:4px 4px;">Hindernis</th>
-        <th></th>
+        <th>Azimut (&deg;)</th>
+        <th>Obergrenze dort (&deg;)</th>
+        <th>Hindernis</th>
+        <th><span class="visually-hidden">Entfernen</span></th>
       </tr>
     </thead>
     <tbody id="locCeilingRows"></tbody>
   </table>
-  <button type="button" id="locAddCeilingRow" class="secondary" style="padding:6px 12px; font-size:0.8rem;">+ Stützpunkt hinzufügen (oben)</button><!--
-  --><button type="button" id="locSurveyCeilingBtn" class="secondary" style="padding:6px 12px; font-size:0.8rem; margin-left:3pt;">Vermessen</button>
+  <button type="button" id="locAddCeilingRow" class="secondary btn-sm">+ Stützpunkt hinzufügen (oben)</button><!--
+  --><button type="button" id="locSurveyCeilingBtn" class="secondary btn-sm" style="margin-left:3pt;">Vermessen</button>
 
   <div style="display:flex; gap:8px; margin-top:22px; align-items:center;">
     <button type="button" id="locExportBtn" class="secondary" style="display:none;">Standort exportieren</button>
@@ -870,10 +989,10 @@
      "Standorte automatisch nach GitHub senden"). Beide Werte bleiben ausschließlich in localStorage
      dieses Browsers - nie im HTML/Repo - damit landet hier kein Geheimnis im öffentlich ausgelieferten
      Seitenquelltext. -->
-<dialog id="githubSyncSettingsModal" style="background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); max-width:480px; width:100%; padding:22px 24px; color:var(--text);">
-  <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px;">
-    <h2 style="margin-top:0;">Sync-Einstellungen</h2>
-    <button type="button" id="syncSettingsCloseXBtn" class="secondary" aria-label="Schließen" style="padding:2px 11px; font-size:1.05rem; line-height:1.3; border-radius:6px; margin-top:-2px;">&times;</button>
+<dialog id="githubSyncSettingsModal" class="modal">
+  <div class="modal-head">
+    <h2>Sync-Einstellungen</h2>
+    <button type="button" id="syncSettingsCloseXBtn" class="secondary btn-close" aria-label="Schließen">&times;</button>
   </div>
   <p class="small" style="margin:0 0 14px;">
     Adresse und Schlüssel deines Sync-Workers (Einrichtung: siehe Doku, Abschnitt „Standorte automatisch
@@ -887,7 +1006,7 @@
     <label for="syncSharedKey">Zugriffs-Schlüssel</label>
     <input type="text" id="syncSharedKey" placeholder="derselbe Wert wie SHARED_KEY im Worker">
   </div>
-  <div style="display:flex; gap:8px; margin-top:22px; justify-content:flex-end;">
+  <div class="modal-actions">
     <button type="button" id="syncSettingsCancelBtn" class="secondary">Abbrechen</button>
     <button type="button" id="syncSettingsSaveBtn">Speichern</button>
   </div>
@@ -899,10 +1018,10 @@
      resultierende workers.dev-Adresse wird hier gespeichert (localStorage dieses Browsers) - kein
      Schlüssel nötig, da der Worker selbst (exoplanet-proxy-worker.js) absichtlich nur genau diese eine
      feste NASA-Abfrage weiterreicht und daher nicht als offener Proxy missbraucht werden kann. -->
-<dialog id="exoWorkerSettingsModal" style="background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); max-width:480px; width:100%; padding:22px 24px; color:var(--text);">
-  <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px;">
-    <h2 style="margin-top:0;">Eigener Proxy-Worker</h2>
-    <button type="button" id="exoWorkerSettingsCloseXBtn" class="secondary" aria-label="Schließen" title="Schließen (wie Abbrechen)" style="padding:2px 11px; font-size:1.05rem; line-height:1.3; border-radius:6px; margin-top:-2px;">&times;</button>
+<dialog id="exoWorkerSettingsModal" class="modal">
+  <div class="modal-head">
+    <h2>Eigener Proxy-Worker</h2>
+    <button type="button" id="exoWorkerSettingsCloseXBtn" class="secondary btn-close" aria-label="Schließen" title="Schließen (wie Abbrechen)">&times;</button>
   </div>
   <p class="small" style="margin:0 0 14px;">
     Die kostenlosen öffentlichen CORS-Proxys, über die dieses Tool sonst versucht, die NASA-Exoplaneten-Daten
@@ -917,7 +1036,7 @@
     <label for="exoWorkerUrl">Worker-URL</label>
     <input type="text" id="exoWorkerUrl" placeholder="https://exoplanet-proxy.DEIN-SUBDOMAIN.workers.dev">
   </div>
-  <div style="display:flex; gap:8px; margin-top:22px; justify-content:flex-end;">
+  <div class="modal-actions">
     <button type="button" id="exoWorkerSettingsCancelBtn" class="secondary">Abbrechen</button>
     <button type="button" id="exoWorkerSettingsSaveBtn">Speichern</button>
   </div>
@@ -960,7 +1079,7 @@
     </div>
     <div id="camLog">
       <table>
-        <thead><tr><th>#</th><th>Azimuth</th><th>Höhe</th><th></th></tr></thead>
+        <thead><tr><th>#</th><th>Azimuth</th><th>Höhe</th><th><span class="visually-hidden">Löschen</span></th></tr></thead>
         <tbody id="camLogBody"></tbody>
       </table>
     </div>
@@ -975,7 +1094,7 @@
     <button type="button" id="camStartCancelBtn" class="secondary">Abbrechen</button>
   </div>
 
-  <div id="camToast"></div>
+  <div id="camToast" role="status" aria-live="polite"></div>
 
   <div id="camConfirmOverlay">
     <div id="camConfirmBox">
@@ -998,12 +1117,15 @@
     document.getElementById('docView').style.display = 'block';
     document.getElementById('showDocBtn').style.display = 'none';
     window.scrollTo(0,0);
+    // Fokus auf "Zurück" setzen - sonst bliebe er auf dem jetzt unsichtbaren Doku-Knopf hängen.
+    document.getElementById('backToPlannerBtn').focus();
   });
   document.getElementById('backToPlannerBtn').addEventListener('click', ()=>{
     document.getElementById('docView').style.display = 'none';
     document.getElementById('plannerView').style.display = 'block';
     document.getElementById('showDocBtn').style.display = '';
     window.scrollTo(0,0);
+    document.getElementById('showDocBtn').focus();
   });
 
   function showToast(msg){
@@ -1011,7 +1133,19 @@
     t.textContent = msg;
     t.classList.add('show');
     clearTimeout(showToast._timer);
-    showToast._timer = setTimeout(()=>t.classList.remove('show'), 3000);
+    // Anzeigedauer nach Textlänge (4-12 s statt fest 3 s): lange Meldungen (z.B. Stellarium-Hinweise)
+    // waren vorher kaum zu Ende zu lesen (WCAG 2.2.1 "Ausreichend Zeit").
+    const ms = Math.min(12000, Math.max(4000, String(msg).length * 60));
+    showToast._timer = setTimeout(()=>t.classList.remove('show'), ms);
+  }
+
+  // Systemeinstellung "Bewegung reduzieren" respektieren (WCAG 2.3.3): dann ohne Animation scrollen.
+  function scrollBehavior(){
+    try{ return window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'; }
+    catch(e){ return 'auto'; }
+  }
+  function scrollToCompass(){
+    document.getElementById('compassSvg').scrollIntoView({behavior:scrollBehavior(), block:'center'});
   }
 
   // ---------- Umschaltung Exoplaneten / Deep-Sky-Objekte ----------
@@ -1043,6 +1177,10 @@
     document.getElementById('modeExoBtn').classList.toggle('secondary', mode !== 'exo');
     document.getElementById('modeDsoBtn').classList.toggle('secondary', mode !== 'dso');
     document.getElementById('modeNowBtn').classList.toggle('secondary', mode !== 'now');
+    // Aktiver Modus auch für Screenreader erkennbar (nicht nur über die Farbe).
+    document.getElementById('modeExoBtn').setAttribute('aria-pressed', String(mode === 'exo'));
+    document.getElementById('modeDsoBtn').setAttribute('aria-pressed', String(mode === 'dso'));
+    document.getElementById('modeNowBtn').setAttribute('aria-pressed', String(mode === 'now'));
     document.getElementById('zielNowCard').style.display = mode === 'now' ? '' : 'none';
     document.getElementById('resultsCardNow').style.display = mode === 'now' ? '' : 'none';
     // Im "Jetzt"-Modus legen aktuelle Uhrzeit und aktueller Tag den Zeitraum fest - Start-Datum und
@@ -1083,7 +1221,12 @@
 
   // Standard Alt/Az aus RA/Dec (Grad), Standort lat/lon (Grad, Ost positiv), Zeitpunkt jd
   function altAz(jd, raDeg, decDeg, latDeg, lonDeg){
-    const lst = norm360(gmstDeg(jd) + lonDeg);
+    return altAzFromLst(norm360(gmstDeg(jd) + lonDeg), raDeg, decDeg, latDeg);
+  }
+  // Wie altAz(), aber mit bereits berechneter lokaler Sternzeit (Grad). Die Sternzeit hängt nur von
+  // Zeitpunkt und Standort ab - die DSO-Berechnung rechnet sie daher einmal pro Zeitschritt vor statt
+  // für jedes der bis zu 563 Objekte erneut (siehe buildNightGrid()).
+  function altAzFromLst(lst, raDeg, decDeg, latDeg){
     const H = norm360(lst - raDeg);
     const Hr = toRad(H), latR = toRad(latDeg), decR = toRad(decDeg);
     const sinAlt = Math.sin(decR)*Math.sin(latR) + Math.cos(decR)*Math.cos(latR)*Math.cos(Hr);
@@ -1106,11 +1249,59 @@
     const lamR = toRad(lam), epsR = toRad(eps);
     let ra = norm360(toDeg(Math.atan2(Math.cos(epsR)*Math.sin(lamR), Math.cos(lamR))));
     const dec = toDeg(Math.asin(Math.sin(epsR)*Math.sin(lamR)));
-    return {ra, dec};
+    return {ra, dec, lam};
   }
   function sunAltitude(jd, latDeg, lonDeg){
     const s = sunEquatorial(jd);
     return altAz(jd, s.ra, s.dec, latDeg, lonDeg).alt;
+  }
+
+  // Mondposition nach der Kurzformel des "Astronomical Almanac" (Genauigkeit ca. 0,3°; gegen PyEphem
+  // geprüft). Für die Frage "stört der Mond und wie hell ist er?" mehr als ausreichend.
+  function moonEquatorial(jd){
+    const T = (jd - 2451545.0)/36525.0;
+    const sd = d => Math.sin(toRad(d));
+    const lam = norm360(218.32 + 481267.881*T
+      + 6.29*sd(135.0 + 477198.87*T) - 1.27*sd(259.3 - 413335.36*T)
+      + 0.66*sd(235.7 + 890534.22*T) + 0.21*sd(269.9 + 954397.74*T)
+      - 0.19*sd(357.5 + 35999.05*T) - 0.11*sd(186.5 + 966404.03*T));
+    const bet = 5.13*sd(93.3 + 483202.02*T) + 0.28*sd(228.2 + 960400.89*T)
+      - 0.28*sd(318.3 + 6003.15*T) - 0.17*sd(217.6 - 407332.21*T);
+    const eps = toRad(23.439 - 0.0000004*(jd - 2451545.0));
+    const l = toRad(lam), b = toRad(bet);
+    const x = Math.cos(b)*Math.cos(l);
+    const y = Math.cos(eps)*Math.cos(b)*Math.sin(l) - Math.sin(eps)*Math.sin(b);
+    const z = Math.sin(eps)*Math.cos(b)*Math.sin(l) + Math.cos(eps)*Math.sin(b);
+    return { ra: norm360(toDeg(Math.atan2(y, x))), dec: toDeg(Math.asin(Math.max(-1, Math.min(1, z)))), lam };
+  }
+  // Mond relativ zu einem Objekt: Beleuchtung (0..1), zu-/abnehmend, Höhe über Horizont und
+  // Winkelabstand zum Objekt (Grad; null, wenn kein Objekt angegeben).
+  function moonInfo(jd, ra, dec, lat, lon){
+    const m = moonEquatorial(jd);
+    const sun = sunEquatorial(jd);
+    const elong = toDeg(angularDist(m.ra, m.dec, sun.ra, sun.dec));
+    return {
+      illum: (1 - Math.cos(toRad(elong))) / 2,
+      waxing: norm360(m.lam - sun.lam) < 180,
+      // Höhe inkl. genäherter Parallaxe (Mond steht vom Beobachter aus bis ca. 1° tiefer als vom Erdmittelpunkt).
+      alt: (a => a - 0.95*Math.cos(toRad(a)))(altAz(jd, m.ra, m.dec, lat, lon).alt),
+      dist: (ra === null || ra === undefined) ? null : toDeg(angularDist(ra, dec, m.ra, m.dec))
+    };
+  }
+  function moonPhaseText(m){
+    const pct = Math.round(m.illum * 100);
+    if(pct <= 2) return 'Neumond';
+    if(pct >= 98) return 'Vollmond';
+    return `${pct}&nbsp;% ${m.waxing ? 'zunehmend' : 'abnehmend'}`;
+  }
+  // Tabellenzelle "Mond": Abstand + Phase; Warnhinweis, wenn er hell (> 50 %) und näher als 45° steht.
+  function moonCellHtml(m){
+    if(!m) return '&ndash;';
+    const phase = moonPhaseText(m);
+    if(m.alt < 0) return `<span class="small">unter Horizont</span><br><span class="small">${phase}</span>`;
+    const disturbing = m.illum >= 0.5 && m.dist !== null && m.dist < 45;
+    return `${m.dist === null ? '' : m.dist.toFixed(0) + '&deg; entfernt<br>'}<span class="small">${phase}</span>`
+      + (disturbing ? '<br><span class="badge warn">hell &amp; nah</span>' : '');
   }
 
   // ---------- Sternbild-Näherung (nächster Sternbild-Mittelpunkt, KEINE exakten IAU-Grenzen) ----------
@@ -1869,7 +2060,7 @@
   function renderLog(entries){
     const logEl = document.getElementById('loadLog');
     logEl.innerHTML = entries.map(e =>
-      `<div>${e.ok ? '✅' : '❌'} <strong>${e.name}</strong>${e.msg ? ' — ' + e.msg : ''}</div>`
+      `<div>${e.ok ? '✅' : '❌'} <strong>${escapeHtml(e.name)}</strong>${e.msg ? ' — ' + escapeHtml(e.msg) : ''}</div>`
     ).join('');
   }
 
@@ -1923,18 +2114,49 @@
     {az:313, minEl:42, note:'Baum (WNW) 1'}
   ];
 
-  function minElevationAt(az, profile){
-    if(!profile.length) return 90;
-    if(az <= profile[0].az) return profile[0].minEl;
-    if(az >= profile[profile.length-1].az) return profile[profile.length-1].minEl;
+  // ---------- Azimut-Sichtfenster (auch über Norden hinweg, z.B. 300° -> 60°) ----------
+  // Das Fenster beginnt bei azStart und läuft im Uhrzeigersinn bis azEnd. azEnd < azStart bedeutet
+  // "über Norden hinweg"; 0°/360° ist Rundumsicht. Für normale Fenster (azEnd > azStart) ist das exakt
+  // die frühere Prüfung azStart <= az <= azEnd.
+  function azSpan(azStart, azEnd){
+    const span = norm360(azEnd - azStart);
+    return span === 0 ? 360 : span;
+  }
+  function azInWindow(az, azStart, azEnd){
+    return norm360(az - azStart) <= azSpan(azStart, azEnd) + 1e-9;
+  }
+
+  // Interpoliert ein Stützpunkt-Profil (untere oder obere Grenze) linear. Die Profile kommen aus
+  // prepareProfile() und tragen ihre Position relativ zum Fensterbeginn ("u", 0..360) - so funktioniert
+  // die Interpolation auch bei Fenstern über Norden hinweg. Außerhalb des ersten/letzten Punkts gilt
+  // dessen Wert weiter; nur bei Rundumsicht wird über Norden hinweg zwischen letztem und erstem Punkt
+  // interpoliert (der Horizont ist dort ja durchgehend).
+  function profileValueAt(az, profile, key, emptyValue){
+    if(!profile.length) return emptyValue;
+    const u = norm360(az - (profile.azStart || 0));
+    const first = profile[0], last = profile[profile.length-1];
+    if(u < first.u || u > last.u){
+      if(profile.fullCircle && profile.length >= 2){
+        const gap = first.u + 360 - last.u;
+        const t = gap === 0 ? 0 : ((u < first.u ? u + 360 : u) - last.u) / gap;
+        return last[key] + t*(first[key] - last[key]);
+      }
+      return u < first.u ? first[key] : last[key];
+    }
     for(let i=0;i<profile.length-1;i++){
       const p0=profile[i], p1=profile[i+1];
-      if(az>=p0.az && az<=p1.az){
-        const t = (p1.az===p0.az) ? 0 : (az-p0.az)/(p1.az-p0.az);
-        return p0.minEl + t*(p1.minEl-p0.minEl);
+      if(u>=p0.u && u<=p1.u){
+        const t = (p1.u===p0.u) ? 0 : (u-p0.u)/(p1.u-p0.u);
+        return p0[key] + t*(p1[key]-p0[key]);
       }
     }
-    return 90;
+    return last[key];
+  }
+
+  // Leeres Profil der unteren Grenze = freier Horizont (0°). Früher stand hier 90°, wodurch ein neu
+  // angelegter Standort ohne Stützpunkte stillschweigend gar nichts mehr anzeigte.
+  function minElevationAt(az, profile){
+    return profileValueAt(az, profile, 'minEl', 0);
   }
 
   // Spiegelt das Mindesthöhe-Profil oben 1:1, nur für die OBERE statt der unteren Grenze. Exakt
@@ -2010,13 +2232,27 @@
   // getHorizonRows()/getCeilingRows() lesen ab jetzt aus dem aktiven Standort-Datensatz statt aus
   // einer DOM-Tabelle - drawCompass()/compute()/computeDso() rufen diese Funktionen unverändert auf
   // und merken vom Umbau nichts.
+  function prepareProfile(points){
+    const loc = getActiveLocation();
+    const azStart = loc ? loc.azStart : 0, azEnd = loc ? loc.azEnd : 360;
+    const rows = points.map(p=>({...p, u: norm360(p.az - azStart)})).sort((a,b)=>a.u-b.u);
+    rows.azStart = azStart;
+    rows.fullCircle = azSpan(azStart, azEnd) >= 360;
+    return rows;
+  }
   function getHorizonRows(){
     const loc = getActiveLocation();
-    return loc ? loc.horizon.map(p=>({...p})).sort((a,b)=>a.az-b.az) : [];
+    return prepareProfile(loc ? loc.horizon : []);
   }
   function getCeilingRows(){
     const loc = getActiveLocation();
-    return loc ? loc.ceiling.map(p=>({...p})).sort((a,b)=>a.az-b.az) : [];
+    return prepareProfile(loc ? loc.ceiling : []);
+  }
+  // Niedrigste überhaupt mögliche Mindesthöhe (inkl. 5°-Puffer) für die schnelle Vorab-Aussortierung
+  // von Objekten, die nie hoch genug kommen. Früher ohne Puffer - Objekte, die nur in der Pufferzone
+  // sichtbar wären, fielen dadurch im Exoplaneten-/Deep-Sky-Modus fälschlich heraus.
+  function quickFilterMinEl(horizonProfile){
+    return (horizonProfile.length ? Math.min(...horizonProfile.map(p=>p.minEl)) : 0) - SAFETY_MARGIN_DEG;
   }
 
   // Kacheln statt Dropdown, damit alle Standorte gleichzeitig sichtbar sind. Der aktive Standort
@@ -2026,7 +2262,7 @@
     const container = document.getElementById('locationTiles');
     container.innerHTML = locations.map(l=>{
       const isActive = l.id === activeLocationId;
-      return `<button type="button" class="location-tile${isActive ? '' : ' secondary'}" data-id="${escapeHtml(l.id)}" style="padding:8px 14px; font-size:0.85rem;">${escapeHtml(l.name)}</button>`;
+      return `<button type="button" class="location-tile${isActive ? '' : ' secondary'}" aria-pressed="${isActive}" data-id="${escapeHtml(l.id)}" style="padding:8px 14px; font-size:0.85rem;">${escapeHtml(l.name)}</button>`;
     }).join('');
     container.querySelectorAll('.location-tile').forEach(btn=>{
       btn.addEventListener('click', ()=>{
@@ -2052,6 +2288,7 @@
     document.getElementById('resultsBodyDso').innerHTML = '';
     document.getElementById('rowCountDso').textContent = '0 Ergebnisse';
     lastDsoComputeParams = null;
+    cancelDsoRun();
     allRowsNow = [];
     currentRenderedRowsNow = [];
     document.getElementById('resultsBodyNow').innerHTML = '';
@@ -2085,11 +2322,16 @@
   let editingLocationId = null; // null = "Neuer Standort" wird angelegt statt eines bestehenden bearbeitet
 
   function buildProfileRowHtml(azClass, elClass, elMax, noteClass, removeClass, az, el, note){
+    // aria-label je Feld: Die Tabellenspalten haben zwar sichtbare Überschriften, Eingabefelder in
+    // Tabellenzellen sind damit für Screenreader aber nicht beschriftet (axe: "label", kritisch).
+    const isHorizon = azClass === 'loc-hz-az';
+    const elLabel = isHorizon ? 'Mindesthöhe' : 'Obergrenze';
+    const which = isHorizon ? 'untere Grenze' : 'obere Grenze';
     return `
-      <td style="padding:3px 4px;"><input type="number" class="${azClass}" value="${az}" min="0" max="360" style="width:70px; background:var(--panel2); border:1px solid var(--border); color:var(--text); border-radius:6px; padding:5px 6px;"></td>
-      <td style="padding:3px 4px;"><input type="number" class="${elClass}" value="${el}" min="-90" max="${elMax}" style="width:70px; background:var(--panel2); border:1px solid var(--border); color:var(--text); border-radius:6px; padding:5px 6px;"></td>
-      <td style="padding:3px 4px;"><input type="text" class="${noteClass}" value="${note||''}" placeholder="z.B. Baum" style="width:100%; background:var(--panel2); border:1px solid var(--border); color:var(--text); border-radius:6px; padding:5px 6px;"></td>
-      <td style="padding:3px 4px;"><button type="button" class="secondary ${removeClass}" style="padding:4px 9px; font-size:0.78rem;">&times;</button></td>
+      <td><input type="number" class="profile-input ${azClass}" value="${az}" min="0" max="360" aria-label="Azimut in Grad (${which})"></td>
+      <td><input type="number" class="profile-input ${elClass}" value="${el}" min="-90" max="${elMax}" aria-label="${elLabel} in Grad"></td>
+      <td><input type="text" class="profile-input ${noteClass}" value="${escapeHtml(note||'')}" placeholder="z.B. Baum" aria-label="Hindernis (Beschreibung)"></td>
+      <td><button type="button" class="secondary ${removeClass}" style="padding:4px 9px; font-size:0.78rem;" aria-label="Stützpunkt entfernen" title="Stützpunkt entfernen">&times;</button></td>
     `;
   }
 
@@ -2479,9 +2721,10 @@
   // Kleines X oben rechts im Fenster - hat exakt denselben Effekt wie "Abbrechen" (schließt ohne
   // zu speichern), ruft daher dieselbe Funktion auf statt eigener Logik.
   document.getElementById('locCloseXBtn').addEventListener('click', closeLocationModal);
-  // Bewusst KEIN Schließen per Klick auf den Hintergrund/Backdrop: Das Fenster soll ausschließlich
-  // über "Abbrechen" oder "Speichern" verlassen werden, damit ein versehentlicher Klick daneben
-  // (z.B. beim Ausfüllen der Stützpunkt-Tabelle) nicht die bisherige Eingabe verwirft.
+  // Bewusst KEIN Schließen per Klick auf den Hintergrund/Backdrop, damit ein versehentlicher Klick
+  // daneben (z.B. beim Ausfüllen der Stützpunkt-Tabelle) nicht die bisherige Eingabe verwirft. Die
+  // Escape-Taste schließt das Fenster dagegen wie "Abbrechen" - das ist bewusst so belassen, weil
+  // Escape als Tastatur-Standard zum Schließen von Dialogen erwartet wird (Barrierefreiheit).
   document.getElementById('locAddHorizonRow').addEventListener('click', ()=>addLocProfileRow('horizon', 225, 30, ''));
   document.getElementById('locAddCeilingRow').addEventListener('click', ()=>addLocProfileRow('ceiling', 250, 70, ''));
 
@@ -2537,7 +2780,10 @@
     const azEnd = parseFloat(document.getElementById('locAzEnd').value);
     if(!name){ showToast('Bitte einen Namen für den Standort angeben.'); return; }
     if(!isFinite(lat) || !isFinite(lon)){ showToast('Bitte gültige Breite/Länge angeben.'); return; }
-    if(!isFinite(azStart) || !isFinite(azEnd) || azEnd <= azStart){ showToast('Azimut-Ende muss größer als Azimut-Start sein (z.B. 0° / 360° für Rundumsicht).'); return; }
+    if(!isFinite(azStart) || !isFinite(azEnd) || azStart < 0 || azStart > 360 || azEnd < 0 || azEnd > 360){ showToast('Azimut-Start und -Ende müssen zwischen 0° und 360° liegen.'); return; }
+    // azEnd < azStart ist erlaubt (Fenster über Norden, z.B. 300° -> 60°); nur identische Werte wären
+    // mehrdeutig (leeres Fenster oder Rundumsicht?).
+    if(azStart === azEnd){ showToast('Azimut-Start und -Ende dürfen nicht gleich sein – für Rundumsicht 0° / 360° eintragen.'); return; }
     const horizon = readLocProfileRows('horizon');
     const ceiling = readLocProfileRows('ceiling');
 
@@ -2848,19 +3094,8 @@
 
   function maxElevationAt(az, profile){
     // Leeres Profil = keine Verdeckung von oben bekannt -> 90° (Zenit), also unbegrenzt nach oben.
-    // Bewusst der neutrale/permissive Wert, anders als bei minElevationAt (dort bedeutet ein leeres
-    // Profil "sicherheitshalber alles blockiert" - hier wäre das Gegenteil sinnvoll).
-    if(!profile.length) return 90;
-    if(az <= profile[0].az) return profile[0].maxEl;
-    if(az >= profile[profile.length-1].az) return profile[profile.length-1].maxEl;
-    for(let i=0;i<profile.length-1;i++){
-      const p0=profile[i], p1=profile[i+1];
-      if(az>=p0.az && az<=p1.az){
-        const t = (p1.az===p0.az) ? 0 : (az-p0.az)/(p1.az-p0.az);
-        return p0.maxEl + t*(p1.maxEl-p0.maxEl);
-      }
-    }
-    return 90;
+    // Bewusst der neutrale/permissive Wert - genau wie bei minElevationAt (leer = freier Horizont).
+    return profileValueAt(az, profile, 'maxEl', 90);
   }
 
   // ---------- Sicherheits-Puffer um den beobachtbaren Bereich ----------
@@ -2914,15 +3149,33 @@
     }
     // Markierung der zugehörigen Tabellenzeile direkt per Klassen-Toggle aktualisieren (statt eines
     // vollen renderTable()), damit Sortierung/Suchtext/Scroll-Position der Tabelle unangetastet bleiben.
-    // Wirkt auf die im jeweils aktiven Modus (Exoplaneten/DSO) sichtbare Tabelle.
+    // aria-current macht die gewählte Zeile auch für Screenreader erkennbar (nicht nur farblich).
     const activeRows = activeRenderedRows();
     document.querySelectorAll(`#${activeTbodyId()} tr[data-idx]`).forEach(tr=>{
-      const idx = parseInt(tr.dataset.idx, 10);
-      tr.classList.toggle('row-highlighted', activeRows[idx] === row);
+      const isHl = activeRows[parseInt(tr.dataset.idx, 10)] === row;
+      tr.classList.toggle('row-highlighted', isHl);
+      if(isHl) tr.setAttribute('aria-current', 'true'); else tr.removeAttribute('aria-current');
     });
     drawCompass();
   }
   document.getElementById('clearHighlight').addEventListener('click', ()=>setHighlight(null));
+
+  // Textfassung des Diagramms für Screenreader (WCAG 1.1.1): Sichtfenster, Stützpunkte und - falls
+  // gewählt - Start/Ende der hervorgehobenen Bahn.
+  function describeCompass(azStart, azEnd, profile, ceilingProfile){
+    const loc = getActiveLocation();
+    const fmtPts = (pts, key) => pts.map(p=>`${Math.round(p.az)}° → ${Math.round(p[key])}°`).join(', ');
+    let txt = `Standort „${loc ? loc.name : ''}“. Sichtfenster ` +
+      (azSpan(azStart, azEnd) >= 360 ? 'rundum (0° bis 360°)' : `von Azimut ${azStart}° bis ${azEnd}° im Uhrzeigersinn`) + '. ';
+    txt += profile.length ? `Untere Grenze (Azimut → Mindesthöhe): ${fmtPts(profile, 'minEl')}. ` : 'Keine untere Grenze erfasst (freier Horizont). ';
+    txt += ceilingProfile.length ? `Obere Grenze (Azimut → Obergrenze): ${fmtPts(ceilingProfile, 'maxEl')}. ` : 'Keine obere Grenze erfasst. ';
+    if(highlightedRow && highlightedRow.path && highlightedRow.path.length){
+      const f = highlightedRow.path[0], l = highlightedRow.path[highlightedRow.path.length-1];
+      txt += `Hervorgehobene Bahn: ${highlightedRow.pl_name}, Start ${fmtBerlin(f.jd)} bei Azimut ${Math.round(f.az)}° und Höhe ${Math.round(f.alt)}°, ` +
+        `Ende ${fmtBerlin(l.jd)} bei Azimut ${Math.round(l.az)}° und Höhe ${Math.round(l.alt)}°.`;
+    }
+    return txt;
+  }
 
   function drawCompass(){
     const azStart = parseFloat(document.getElementById('azStart').value);
@@ -2930,7 +3183,8 @@
     const profile = getHorizonRows();
     const ceilingProfile = getCeilingRows();
     const svg = document.getElementById('compassSvg');
-    if(!isFinite(azStart) || !isFinite(azEnd) || azEnd<=azStart){ svg.innerHTML=''; return; }
+    if(!isFinite(azStart) || !isFinite(azEnd)){ svg.innerHTML=''; return; }
+    const span = azSpan(azStart, azEnd);
 
     const cx=160, cy=160, rMax=130;
     const rFor = el => rMax*(90-el)/90;
@@ -2945,11 +3199,13 @@
       svgContent += `<circle cx="${cx}" cy="${cy}" r="${rFor(el)}" fill="none" stroke="#2a3348" stroke-width="1"/>`;
       svgContent += `<text x="${cx+4}" y="${cy-rFor(el)-2}" text-anchor="start">${el}°</text>`;
     });
-    const steps = 60;
+    // Das Fenster wird von azStart aus im Uhrzeigersinn über "span" Grad abgetastet - funktioniert so
+    // auch für Fenster über Norden hinweg (z.B. 300° -> 60°).
+    const steps = Math.max(60, Math.round(span / 2));
     let bufOuterPath = '', bufInnerPath = '';
     let coreOuterPath = '', coreInnerPath = '';
     for(let i=0;i<=steps;i++){
-      const az = azStart + (azEnd-azStart)*i/steps;
+      const az = azStart + span*i/steps;
       const b = bufferedElevationBounds(az, profile, ceilingProfile);
       const [xbo,ybo] = pt(az, b.minEl);
       bufOuterPath += (i===0?'M':'L') + ` ${xbo.toFixed(1)} ${ybo.toFixed(1)} `;
@@ -2957,7 +3213,7 @@
       coreOuterPath += (i===0?'M':'L') + ` ${xco.toFixed(1)} ${yco.toFixed(1)} `;
     }
     for(let i=steps;i>=0;i--){
-      const az = azStart + (azEnd-azStart)*i/steps;
+      const az = azStart + span*i/steps;
       const b = bufferedElevationBounds(az, profile, ceilingProfile);
       const [xbi,ybi] = pt(az, b.maxEl);
       bufInnerPath += `L ${xbi.toFixed(1)} ${ybi.toFixed(1)} `;
@@ -2971,7 +3227,8 @@
     svgContent += `<path d="${bufOuterPath}${bufInnerPath}Z" fill="#f4c258" fill-opacity="0.18" stroke="#f4c258" stroke-width="1" stroke-dasharray="3 2"/>`;
     svgContent += `<path d="${coreOuterPath}${coreInnerPath}Z" fill="#5fb3ff" fill-opacity="0.32" stroke="#5fb3ff" stroke-width="1.5"/>`;
 
-    // Bahn eines angeklickten Transits überlagern
+    // Bahn eines angeklickten Eintrags überlagern. Start = Kreis, Ende = Quadrat: unterscheidbar auch
+    // ohne Farbwahrnehmung (vorher grüner/roter Kreis - bei Rot-Grün-Schwäche kaum zu trennen).
     if(highlightedRow && highlightedRow.path && highlightedRow.path.length){
       let trackPath = '';
       highlightedRow.path.forEach((p,i)=>{
@@ -2981,10 +3238,10 @@
       svgContent += `<path d="${trackPath}" fill="none" stroke="#ff8c42" stroke-width="2.5"/>`;
       const first = highlightedRow.path[0], last = highlightedRow.path[highlightedRow.path.length-1];
       const [xs,ys] = pt(first.az, first.alt), [xe,ye] = pt(last.az, last.alt);
-      svgContent += `<circle cx="${xs}" cy="${ys}" r="4" fill="#7ee7c7"/>`;
-      svgContent += `<circle cx="${xe}" cy="${ye}" r="4" fill="#f2687a"/>`;
-      // Unsichtbare, breitere Hit-Flächen entlang der Bahn: beim Hovern wird die Zeit an
-      // dieser Stelle des Beobachtungsfensters angezeigt (siehe mousemove-Handler unten).
+      svgContent += `<circle cx="${xs}" cy="${ys}" r="4.5" fill="#7ee7c7" stroke="#0f1420" stroke-width="1"/>`;
+      svgContent += `<rect x="${xe-4.5}" y="${ye-4.5}" width="9" height="9" fill="#f2687a" stroke="#0f1420" stroke-width="1"/>`;
+      // Unsichtbare, breitere Hit-Flächen entlang der Bahn: Maus-Hover bzw. Antippen zeigt die Zeit
+      // an dieser Stelle des Beobachtungsfensters (siehe Tooltip-Handler unten).
       highlightedRow.path.forEach(p=>{
         const [x,y] = pt(p.az, p.alt);
         svgContent += `<circle class="path-point" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="7" `
@@ -2993,13 +3250,15 @@
       });
     }
 
+    // Stützpunkte: untere Grenze = Kreis (gelb), obere Grenze = Raute (violett) - Form statt nur Farbe.
     profile.forEach(p=>{
       const [x,y] = pt(p.az, p.minEl);
-      svgContent += `<circle class="hz-point" cx="${x}" cy="${y}" r="3" data-az="${p.az}" data-el="${p.minEl}" fill="#f4c258" style="cursor:pointer;"/>`;
+      svgContent += `<circle class="hz-point" cx="${x}" cy="${y}" r="3.5" data-az="${p.az}" data-el="${p.minEl}" fill="#f4c258" style="cursor:pointer;"/>`;
     });
     ceilingProfile.forEach(p=>{
       const [x,y] = pt(p.az, p.maxEl);
-      svgContent += `<circle class="clg-point" cx="${x}" cy="${y}" r="3" data-az="${p.az}" data-el="${p.maxEl}" fill="#a78bfa" style="cursor:pointer;"/>`;
+      const d = 4.5;
+      svgContent += `<polygon class="clg-point" points="${x},${y-d} ${x+d},${y} ${x},${y+d} ${x-d},${y}" data-az="${p.az}" data-el="${p.maxEl}" fill="#a78bfa" style="cursor:pointer;"/>`;
     });
 
     const dirs = [['N',0],['O',90],['S',180],['W',270]];
@@ -3008,93 +3267,125 @@
       svgContent += `<text x="${x}" y="${y}" text-anchor="middle" dominant-baseline="middle">${label}</text>`;
     });
     svg.innerHTML = svgContent;
+    document.getElementById('compassDesc').textContent = describeCompass(azStart, azEnd, profile, ceilingProfile);
   }
 
   ['azStart','azEnd'].forEach(id=>document.getElementById(id).addEventListener('input', drawCompass));
 
-  // ---------- Zoom im Polardiagramm (Mausrad, zum Mauszeiger hin) ----------
+  // ---------- Zoom im Polardiagramm: Mausrad, Knöpfe (+ / − / Zurücksetzen) und Zwei-Finger-Zoom ----------
   // Rein technisch nur eine Änderung des SVG-viewBox-Attributs, unabhängig vom eigentlichen
-  // Neuzeichnen (drawCompass() setzt nur svg.innerHTML, rührt viewBox nicht an - der Zoom bleibt
-  // also auch nach einem Neuzeichnen erhalten, z.B. beim Anklicken einer Tabellenzeile). Anders als
-  // ein simples "zur Mitte zoomen" bleibt hier der Punkt unter dem Mauszeiger beim Ein-/Auszoomen
-  // fix stehen (Standard-Verhalten wie bei Karten/Diagrammen): Der Cursor-Punkt wird über die
-  // Bildschirm->SVG-Transformationsmatrix (getScreenCTM) ins aktuelle viewBox-Koordinatensystem
-  // umgerechnet, danach wird die neue viewBox so positioniert, dass genau dieser Punkt an derselben
-  // Bildschirmposition stehen bleibt.
+  // Neuzeichnen (drawCompass() setzt nur svg.innerHTML, rührt viewBox nicht an - der Zoom bleibt also
+  // auch nach einem Neuzeichnen erhalten). Beim Mausrad und beim Zwei-Finger-Zoom bleibt der Punkt
+  // unter Mauszeiger bzw. zwischen den Fingern fix stehen (wie bei Karten); die Knöpfe zoomen zur
+  // Mitte des aktuell sichtbaren Ausschnitts und machen den Zoom auch per Tastatur bedienbar.
   const COMPASS_BASE_SIZE = 320;
   const COMPASS_MIN_SIZE = COMPASS_BASE_SIZE / 6; // entspricht max. 6-fachem Zoom
+  const COMPASS_ZOOM_STEP = 1.25;
   let compassViewX = 0, compassViewY = 0, compassViewSize = COMPASS_BASE_SIZE;
-
-  function applyCompassZoom(){
-    const svg = document.getElementById('compassSvg');
-    svg.setAttribute('viewBox', `${compassViewX.toFixed(2)} ${compassViewY.toFixed(2)} ${compassViewSize.toFixed(2)} ${compassViewSize.toFixed(2)}`);
-  }
-
-  // Wandelt Bildschirmkoordinaten (clientX/clientY eines Mausevents) in die aktuellen
-  // viewBox-Koordinaten des SVG um - berücksichtigt dabei automatisch Position, Skalierung und
-  // die aktuell gesetzte viewBox des Elements.
-  function compassPointFromEvent(svg, evt){
-    const ctm = svg.getScreenCTM();
-    if(!ctm) return null;
-    const pt = svg.createSVGPoint();
-    pt.x = evt.clientX;
-    pt.y = evt.clientY;
-    return pt.matrixTransform(ctm.inverse());
-  }
-
-  const compassWheelEl = document.getElementById('compassSvg');
-  compassWheelEl.addEventListener('wheel', (e)=>{
-    e.preventDefault();
-    const zoomFactor = 1.15;
-    let newSize = compassViewSize;
-    if(e.deltaY < 0){
-      newSize = Math.max(COMPASS_MIN_SIZE, compassViewSize / zoomFactor);
-    } else if(e.deltaY > 0){
-      newSize = Math.min(COMPASS_BASE_SIZE, compassViewSize * zoomFactor);
-    }
-    const cursorPt = compassPointFromEvent(compassWheelEl, e);
-    if(cursorPt){
-      // Der Punkt unter dem Cursor (in aktuellen viewBox-Koordinaten) soll nach der Größenänderung
-      // an derselben Stelle bleiben - daher die neue viewBox-Ecke passend zu diesem Fixpunkt
-      // verschieben statt einfach zentriert zu skalieren.
-      const ratio = newSize / compassViewSize;
-      compassViewX = cursorPt.x - (cursorPt.x - compassViewX) * ratio;
-      compassViewY = cursorPt.y - (cursorPt.y - compassViewY) * ratio;
-    }
-    compassViewSize = newSize;
-    // Verhindert, dass beim Herauszoomen/Verschieben der sichtbare Ausschnitt komplett am
-    // eigentlichen Diagramm (Koordinatenraum 0..320) vorbeiwandert: der Mittelpunkt des aktuell
-    // sichtbaren Bereichs wird auf diesen Bereich geklemmt.
-    let centerX = Math.min(COMPASS_BASE_SIZE, Math.max(0, compassViewX + compassViewSize/2));
-    let centerY = Math.min(COMPASS_BASE_SIZE, Math.max(0, compassViewY + compassViewSize/2));
-    compassViewX = centerX - compassViewSize/2;
-    compassViewY = centerY - compassViewSize/2;
-    applyCompassZoom();
-  }, { passive: false });
-  compassWheelEl.addEventListener('dblclick', ()=>{
-    compassViewX = 0; compassViewY = 0; compassViewSize = COMPASS_BASE_SIZE;
-    applyCompassZoom();
-  });
-
-  // Hover-Tooltip für Stützpunkte (Event-Delegation, überlebt Neuzeichnen)
   const compassSvgEl = document.getElementById('compassSvg');
   const compassTooltipEl = document.getElementById('compassTooltip');
-  compassSvgEl.addEventListener('mousemove', (e)=>{
-    const t = e.target;
-    if(t.classList && t.classList.contains('hz-point')){
-      compassTooltipEl.style.display = 'block';
-      compassTooltipEl.style.left = (e.clientX + 12) + 'px';
-      compassTooltipEl.style.top = (e.clientY + 12) + 'px';
-      compassTooltipEl.textContent = `Azimut: ${parseFloat(t.dataset.az).toFixed(0)}°, Mindesthöhe: ${parseFloat(t.dataset.el).toFixed(0)}°`;
-    } else if(t.classList && t.classList.contains('clg-point')){
-      compassTooltipEl.style.display = 'block';
-      compassTooltipEl.style.left = (e.clientX + 12) + 'px';
-      compassTooltipEl.style.top = (e.clientY + 12) + 'px';
-      compassTooltipEl.textContent = `Azimut: ${parseFloat(t.dataset.az).toFixed(0)}°, Obergrenze: ${parseFloat(t.dataset.el).toFixed(0)}°`;
-    } else if(t.classList && t.classList.contains('path-point')){
-      compassTooltipEl.style.display = 'block';
-      compassTooltipEl.style.left = (e.clientX + 12) + 'px';
-      compassTooltipEl.style.top = (e.clientY + 12) + 'px';
+
+  function applyCompassZoom(){
+    compassSvgEl.setAttribute('viewBox', `${compassViewX.toFixed(2)} ${compassViewY.toFixed(2)} ${compassViewSize.toFixed(2)} ${compassViewSize.toFixed(2)}`);
+    document.getElementById('compassZoomIn').disabled = compassViewSize <= COMPASS_MIN_SIZE + 0.01;
+    const atBase = compassViewSize >= COMPASS_BASE_SIZE - 0.01 && Math.abs(compassViewX) < 0.01 && Math.abs(compassViewY) < 0.01;
+    document.getElementById('compassZoomOut').disabled = compassViewSize >= COMPASS_BASE_SIZE - 0.01;
+    document.getElementById('compassZoomReset').disabled = atBase;
+  }
+
+  // Verhindert, dass der sichtbare Ausschnitt komplett am Diagramm (Koordinatenraum 0..320)
+  // vorbeiwandert: der Mittelpunkt des sichtbaren Bereichs wird auf diesen Bereich geklemmt.
+  function clampCompassView(){
+    const centerX = Math.min(COMPASS_BASE_SIZE, Math.max(0, compassViewX + compassViewSize/2));
+    const centerY = Math.min(COMPASS_BASE_SIZE, Math.max(0, compassViewY + compassViewSize/2));
+    compassViewX = centerX - compassViewSize/2;
+    compassViewY = centerY - compassViewSize/2;
+  }
+
+  // Zoomt so, dass der Punkt (anchorX/anchorY in viewBox-Koordinaten) an derselben Bildschirmstelle bleibt.
+  function zoomCompassAt(anchorX, anchorY, newSize){
+    newSize = Math.min(COMPASS_BASE_SIZE, Math.max(COMPASS_MIN_SIZE, newSize));
+    const ratio = newSize / compassViewSize;
+    compassViewX = anchorX - (anchorX - compassViewX) * ratio;
+    compassViewY = anchorY - (anchorY - compassViewY) * ratio;
+    compassViewSize = newSize;
+    clampCompassView();
+    applyCompassZoom();
+  }
+  function zoomCompassCentered(factor){
+    zoomCompassAt(compassViewX + compassViewSize/2, compassViewY + compassViewSize/2, compassViewSize / factor);
+  }
+  function resetCompassZoom(){
+    compassViewX = 0; compassViewY = 0; compassViewSize = COMPASS_BASE_SIZE;
+    applyCompassZoom();
+  }
+
+  // Bildschirmkoordinaten -> aktuelle viewBox-Koordinaten. Über das Element-Rechteck statt über
+  // getScreenCTM(), weil das Diagramm am Handy per CSS verkleinert sein kann (max-width:100%).
+  function clientToCompassView(clientX, clientY){
+    const r = compassSvgEl.getBoundingClientRect();
+    if(!r.width || !r.height) return null;
+    return {
+      x: compassViewX + (clientX - r.left) / r.width * compassViewSize,
+      y: compassViewY + (clientY - r.top) / r.height * compassViewSize
+    };
+  }
+
+  compassSvgEl.addEventListener('wheel', (e)=>{
+    e.preventDefault();
+    if(e.deltaY === 0) return;
+    const factor = e.deltaY < 0 ? 1.15 : 1/1.15;
+    const p = clientToCompassView(e.clientX, e.clientY) || {x: compassViewX + compassViewSize/2, y: compassViewY + compassViewSize/2};
+    zoomCompassAt(p.x, p.y, compassViewSize / factor);
+  }, { passive: false });
+  compassSvgEl.addEventListener('dblclick', resetCompassZoom);
+  document.getElementById('compassZoomIn').addEventListener('click', ()=>zoomCompassCentered(COMPASS_ZOOM_STEP));
+  document.getElementById('compassZoomOut').addEventListener('click', ()=>zoomCompassCentered(1/COMPASS_ZOOM_STEP));
+  document.getElementById('compassZoomReset').addEventListener('click', resetCompassZoom);
+
+  // Zwei-Finger-Zoom (Pinch) am Handy: Der Punkt zwischen den Fingern bleibt fix, Verschieben beider
+  // Finger verschiebt den Ausschnitt. Ein Finger scrollt weiter ganz normal die Seite.
+  let compassPinch = null, compassPinchEndedAt = 0;
+  function touchCenter(t){ return { x:(t[0].clientX + t[1].clientX)/2, y:(t[0].clientY + t[1].clientY)/2 }; }
+  function touchDistance(t){ return Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY); }
+  compassSvgEl.addEventListener('touchstart', (e)=>{
+    if(e.touches.length !== 2) return;
+    e.preventDefault();
+    const m = touchCenter(e.touches);
+    const anchor = clientToCompassView(m.x, m.y);
+    if(!anchor) return;
+    compassPinch = { d0: Math.max(1, touchDistance(e.touches)), size0: compassViewSize, anchor };
+    hideCompassTooltip();
+  }, { passive: false });
+  compassSvgEl.addEventListener('touchmove', (e)=>{
+    if(!compassPinch || e.touches.length !== 2) return;
+    e.preventDefault();
+    const r = compassSvgEl.getBoundingClientRect();
+    const m = touchCenter(e.touches);
+    const newSize = Math.min(COMPASS_BASE_SIZE, Math.max(COMPASS_MIN_SIZE,
+      compassPinch.size0 * compassPinch.d0 / Math.max(1, touchDistance(e.touches))));
+    compassViewSize = newSize;
+    compassViewX = compassPinch.anchor.x - (m.x - r.left) / r.width * newSize;
+    compassViewY = compassPinch.anchor.y - (m.y - r.top) / r.height * newSize;
+    clampCompassView();
+    applyCompassZoom();
+  }, { passive: false });
+  function endCompassPinch(e){
+    if(compassPinch && e.touches.length < 2){ compassPinch = null; compassPinchEndedAt = Date.now(); }
+  }
+  compassSvgEl.addEventListener('touchend', endCompassPinch);
+  compassSvgEl.addEventListener('touchcancel', endCompassPinch);
+
+  // ---------- Tooltips im Diagramm: Maus-Hover und (am Handy) Antippen ----------
+  function compassTooltipText(t){
+    if(!t || !t.classList) return null;
+    if(t.classList.contains('hz-point')){
+      return `Untere Grenze – Azimut: ${parseFloat(t.dataset.az).toFixed(0)}°, Mindesthöhe: ${parseFloat(t.dataset.el).toFixed(0)}°`;
+    }
+    if(t.classList.contains('clg-point')){
+      return `Obere Grenze – Azimut: ${parseFloat(t.dataset.az).toFixed(0)}°, Obergrenze: ${parseFloat(t.dataset.el).toFixed(0)}°`;
+    }
+    if(t.classList.contains('path-point')){
       const jd = parseFloat(t.dataset.jd);
       let elapsedStr = '';
       if(highlightedRow && isFinite(highlightedRow.winStart)){
@@ -3102,25 +3393,91 @@
         elapsedStr = ` (+${elapsedMin} Min. seit Fensterbeginn)`;
       }
       const nameStr = highlightedRow ? `${highlightedRow.pl_name} — ` : '';
-      compassTooltipEl.textContent = `${nameStr}Zeit: ${fmtBerlin(jd)}${elapsedStr} — Azimut: ${parseFloat(t.dataset.az).toFixed(0)}°, Höhe: ${parseFloat(t.dataset.alt).toFixed(0)}°`;
-    } else {
-      compassTooltipEl.style.display = 'none';
+      return `${nameStr}Zeit: ${fmtBerlin(jd)}${elapsedStr} — Azimut: ${parseFloat(t.dataset.az).toFixed(0)}°, Höhe: ${parseFloat(t.dataset.alt).toFixed(0)}°`;
     }
-  });
-  compassSvgEl.addEventListener('mouseleave', ()=>{ compassTooltipEl.style.display = 'none'; });
+    return null;
+  }
+  // Positioniert den Tooltip neben dem Finger/Mauszeiger, aber immer vollständig im Bildschirm
+  // (am Handy lief er vorher rechts aus dem sichtbaren Bereich).
+  function showCompassTooltip(text, clientX, clientY){
+    compassTooltipEl.textContent = text;
+    compassTooltipEl.style.display = 'block';
+    const w = compassTooltipEl.offsetWidth, h = compassTooltipEl.offsetHeight;
+    let x = clientX + 12, y = clientY + 12;
+    if(x + w > window.innerWidth - 8) x = Math.max(8, clientX - w - 12);
+    if(y + h > window.innerHeight - 8) y = Math.max(8, clientY - h - 12);
+    compassTooltipEl.style.left = x + 'px';
+    compassTooltipEl.style.top = y + 'px';
+  }
+  function hideCompassTooltip(){
+    compassTooltipEl.style.display = 'none';
+    clearTimeout(hideCompassTooltip._timer);
+  }
+  // Nächstgelegener Punkt innerhalb von maxDist Pixeln - Finger sind viel ungenauer als ein
+  // Mauszeiger, die Punkte selbst sind nur wenige Pixel groß.
+  function nearestCompassMarker(clientX, clientY, maxDist){
+    let best = null, bestD = maxDist;
+    compassSvgEl.querySelectorAll('.hz-point, .clg-point, .path-point').forEach(el=>{
+      const r = el.getBoundingClientRect();
+      const d = Math.hypot(r.left + r.width/2 - clientX, r.top + r.height/2 - clientY);
+      if(d < bestD){ bestD = d; best = el; }
+    });
+    return best;
+  }
 
-  // Klick auf die Bahn (eine der unsichtbaren Hit-Flächen entlang der Trajektorie) springt zur
-  // zugehörigen Zeile in der Ergebnistabelle.
+  compassSvgEl.addEventListener('mousemove', (e)=>{
+    const text = compassTooltipText(e.target);
+    if(text) showCompassTooltip(text, e.clientX, e.clientY); else hideCompassTooltip();
+  });
+  compassSvgEl.addEventListener('mouseleave', hideCompassTooltip);
+
+  let compassTouchTooltipAt = 0;
+  compassSvgEl.addEventListener('pointerup', (e)=>{
+    if(e.pointerType === 'mouse') return;
+    if(compassPinch || Date.now() - compassPinchEndedAt < 400) return;
+    const text = compassTooltipText(nearestCompassMarker(e.clientX, e.clientY, 28));
+    if(!text){ hideCompassTooltip(); return; }
+    showCompassTooltip(text, e.clientX, e.clientY);
+    compassTouchTooltipAt = Date.now();
+    clearTimeout(hideCompassTooltip._timer);
+    hideCompassTooltip._timer = setTimeout(hideCompassTooltip, 5000);
+  });
+  // Antippen außerhalb des Diagramms blendet einen per Touch geöffneten Tooltip wieder aus.
+  document.addEventListener('pointerdown', (e)=>{
+    if(e.pointerType !== 'mouse' && !compassSvgEl.contains(e.target)) hideCompassTooltip();
+  });
+
+  // Klick auf die Bahn springt zur zugehörigen Zeile in der Ergebnistabelle. Bei Touch nicht: dort
+  // zeigt das Antippen den Tooltip, ein Sprung weg vom Diagramm wäre störend.
   compassSvgEl.addEventListener('click', (e)=>{
+    if(Date.now() - compassTouchTooltipAt < 700) return;
     const t = e.target;
     if(t.classList && t.classList.contains('path-point') && highlightedRow){
       const idx = activeRenderedRows().indexOf(highlightedRow);
       if(idx >= 0){
         const tr = document.querySelector(`#${activeTbodyId()} tr[data-idx="${idx}"]`);
-        if(tr) tr.scrollIntoView({behavior:'smooth', block:'center'});
+        if(tr) tr.scrollIntoView({behavior:scrollBehavior(), block:'center'});
       }
     }
   });
+
+  // ---------- Zeitraum-Eingaben absichern ----------
+  function todayBerlinIso(){
+    return new Date().toLocaleDateString('sv-SE', {timeZone:'Europe/Berlin'});
+  }
+  // Anzahl Nächte auf 1..365 begrenzen (das max-Attribut im Feld verhindert manuelle Eingaben wie
+  // 5000 nicht - die hätten die Seite minutenlang blockiert) und den korrigierten Wert zurückschreiben.
+  function readDaysAhead(){
+    const el = document.getElementById('daysAhead');
+    let n = parseInt(el.value, 10);
+    if(!isFinite(n)) n = 30;
+    const clamped = Math.min(365, Math.max(1, n));
+    if(clamped !== n || String(clamped) !== el.value){
+      el.value = clamped;
+      if(clamped !== n) showToast(`Anzahl Nächte auf ${clamped} begrenzt (erlaubt: 1–365).`);
+    }
+    return clamped;
+  }
 
   // ---------- Hauptberechnung ----------
   let allRows = [];
@@ -3143,9 +3500,9 @@
     const azEnd = parseFloat(document.getElementById('azEnd').value);
     const horizonProfile = getHorizonRows();
     const ceilingProfile = getCeilingRows();
-    const lowestPossibleMinEl = horizonProfile.length ? Math.min(...horizonProfile.map(p=>p.minEl)) : 90;
+    const lowestPossibleMinEl = quickFilterMinEl(horizonProfile);
     const startStr = document.getElementById('startDate').value;
-    const daysAhead = parseInt(document.getElementById('daysAhead').value, 10) || 30;
+    const daysAhead = readDaysAhead();
     const twilight = parseFloat(document.getElementById('twilight').value);
     const maxMag = parseFloat(document.getElementById('maxMag').value);
     const minDepthPct = parseFloat(document.getElementById('minDepth').value);
@@ -3155,6 +3512,7 @@
     const hideUnknownDepth = document.getElementById('hideUnknownDepth').checked;
 
     const startJD = jdFromDate(new Date(startStr + 'T00:00:00Z'));
+    if(!isFinite(startJD)){ showToast('Bitte ein gültiges Start-Datum angeben.'); return; }
     const endJD = startJD + daysAhead;
 
     const results = [];
@@ -3212,7 +3570,7 @@
           const jd = winStart + (winEnd-winStart)*s/nSteps;
           const pos = altAz(jd, ra, dec, lat, lon);
           const sAlt = sunAltitude(jd, lat, lon);
-          const inAzWindow = pos.az >= azStart && pos.az <= azEnd;
+          const inAzWindow = azInWindow(pos.az, azStart, azEnd);
           const bufBounds = inAzWindow ? bufferedElevationBounds(pos.az, horizonProfile, ceilingProfile) : {minEl:90, maxEl:90};
           const localMinEl = bufBounds.minEl;
           const localMaxEl = bufBounds.maxEl;
@@ -3253,6 +3611,7 @@
           transitAzStart: azStartPos, transitAzEnd: azEndPos,
           status, statusClass,
           path,
+          moon: moonInfo(tMid, ra, dec, lat, lon),
           dateStr: dateFromJd(tMid).toISOString().slice(0,10)
         });
       }
@@ -3290,6 +3649,32 @@
   // berechnet hat.
   let lastDsoComputeParams = null;
 
+  // Zeitraster aller Nächte: Zeitpunkt, lokale Sternzeit und "dunkel genug?" je 15-Minuten-Schritt.
+  // Das alles hängt NICHT vom Objekt ab - früher wurde es für jedes der bis zu 563 Objekte neu
+  // berechnet (vor allem der Sonnenstand), jetzt einmal pro Berechnungslauf. Ergebnisse identisch.
+  function buildNightGrid(lat, lon, twilight, startJD, daysAhead){
+    const stepMin = 15;
+    const nights = [];
+    for(let d=0; d<daysAhead; d++){
+      // Fenster von 12:00 UTC an Tag d bis 12:00 UTC an Tag d+1: liegt für Berlin (UTC+1/+2)
+      // sicher komplett um Mitternacht herum, egal ob Sommer- oder Winterzeit - so wird die
+      // Nacht nie an der UTC-Tagesgrenze in zwei Hälften zerschnitten.
+      const winJdStart = startJD + d + 0.5;
+      const winJdEnd = winJdStart + 1;
+      const nSteps = Math.round((winJdEnd - winJdStart) * 24 * 60 / stepMin);
+      const steps = [];
+      let anyDark = false;
+      for(let s=0; s<=nSteps; s++){
+        const jd = winJdStart + (winJdEnd - winJdStart) * s / nSteps;
+        const dark = sunAltitude(jd, lat, lon) <= twilight;
+        if(dark) anyDark = true;
+        steps.push({ jd, lst: norm360(gmstDeg(jd) + lon), dark });
+      }
+      nights.push({ winJdStart, winJdEnd, steps, anyDark });
+    }
+    return nights;
+  }
+
   // Simuliert für EIN Objekt (nur ra/dec nötig, kein voller Katalogeintrag) jede einzelne Nacht im
   // Zeitraum und liefert pro Nacht das beste zusammenhängende Sichtbarkeitsfenster zurück (oder
   // observable:false, falls keins mindestens 10 Minuten erreicht). Von computeDso() (dort für jedes
@@ -3297,17 +3682,10 @@
   // gemeinsam genutzt, damit beide Stellen exakt dieselbe Geometrie/Dunkelheits-Logik verwenden.
   function computeNightlyRunsForTarget(ra, dec, params){
     const { lat, lon, azStart, azEnd, horizonProfile, ceilingProfile, twilight, startJD, daysAhead } = params;
+    const grid = params.grid || buildNightGrid(lat, lon, twilight, startJD, daysAhead);
     const nights = [];
 
-    for(let d=0; d<daysAhead; d++){
-      // Fenster von 12:00 UTC an Tag d bis 12:00 UTC an Tag d+1: liegt für Berlin (UTC+1/+2)
-      // sicher komplett um Mitternacht herum, egal ob Sommer- oder Winterzeit - so wird die
-      // Nacht nie an der UTC-Tagesgrenze in zwei Hälften zerschnitten.
-      const winJdStart = startJD + d + 0.5;
-      const winJdEnd = winJdStart + 1;
-      const stepMin = 15;
-      const nSteps = Math.round((winJdEnd - winJdStart) * 24 * 60 / stepMin);
-
+    for(const night of grid){
       let curStart = null, curMaxAlt = -999, curPath = [];
       let nightBest = null;
 
@@ -3320,26 +3698,26 @@
         curStart = null; curMaxAlt = -999; curPath = [];
       }
 
-      for(let s=0; s<=nSteps; s++){
-        const jd = winJdStart + (winJdEnd - winJdStart) * s / nSteps;
-        const pos = altAz(jd, ra, dec, lat, lon);
-        const sAlt = sunAltitude(jd, lat, lon);
-        const inAzWindow = pos.az >= azStart && pos.az <= azEnd;
-        const bufBounds = inAzWindow ? bufferedElevationBounds(pos.az, horizonProfile, ceilingProfile) : {minEl:90, maxEl:90};
-        const localMinEl = bufBounds.minEl;
-        const localMaxEl = bufBounds.maxEl;
-        const geomOk = inAzWindow && pos.alt >= localMinEl && pos.alt <= localMaxEl && sAlt <= twilight;
-        if(geomOk){
-          if(curStart === null) curStart = jd;
-          if(pos.alt > curMaxAlt) curMaxAlt = pos.alt;
-          curPath.push({ az: pos.az, alt: pos.alt, jd });
-        } else {
-          closeRun(jd);
+      // Nächte ganz ohne Dunkelheit (z.B. Hochsommer mit astronomischer Dämmerungsgrenze) überspringen.
+      if(night.anyDark){
+        for(const step of night.steps){
+          if(!step.dark){ closeRun(step.jd); continue; }
+          const pos = altAzFromLst(step.lst, ra, dec, lat);
+          const inAzWindow = azInWindow(pos.az, azStart, azEnd);
+          const bufBounds = inAzWindow ? bufferedElevationBounds(pos.az, horizonProfile, ceilingProfile) : {minEl:90, maxEl:90};
+          const geomOk = inAzWindow && pos.alt >= bufBounds.minEl && pos.alt <= bufBounds.maxEl;
+          if(geomOk){
+            if(curStart === null) curStart = step.jd;
+            if(pos.alt > curMaxAlt) curMaxAlt = pos.alt;
+            curPath.push({ az: pos.az, alt: pos.alt, jd: step.jd });
+          } else {
+            closeRun(step.jd);
+          }
         }
+        closeRun(night.winJdEnd);
       }
-      closeRun(winJdEnd);
 
-      const dateStr = dateFromJd(winJdStart).toISOString().slice(0,10);
+      const dateStr = dateFromJd(night.winJdStart).toISOString().slice(0,10);
       // Mindestens 10 Minuten zusammenhängend sichtbar, damit eine Nacht als "beobachtbar" zählt
       // (verhindert, dass ein einzelner Rand-Sample-Punkt schon als Treffer gilt).
       const observable = !!(nightBest && nightBest.dur * 24 * 60 >= 10);
@@ -3359,16 +3737,32 @@
     return nights;
   }
 
-  function computeDso(){
+  // Läuft in Häppchen (je 20 Objekte, danach kurz an den Browser zurückgeben), damit die Seite auch
+  // bei 365 Nächten bedienbar bleibt und der Knopf den Fortschritt zeigt. dsoRunToken erlaubt den
+  // Abbruch eines laufenden Durchgangs (z.B. bei Standortwechsel, siehe cancelDsoRun()).
+  const DSO_BTN_LABEL = 'Deep-Sky-Objekte berechnen';
+  let dsoRunToken = 0;
+  function resetDsoButton(){
+    const btn = document.getElementById('computeDsoBtn');
+    btn.disabled = false;
+    btn.textContent = DSO_BTN_LABEL;
+    btn.removeAttribute('aria-busy');
+  }
+  function cancelDsoRun(){
+    dsoRunToken++;
+    resetDsoButton();
+  }
+
+  async function computeDso(){
     const lat = parseFloat(document.getElementById('lat').value);
     const lon = parseFloat(document.getElementById('lon').value);
     const azStart = parseFloat(document.getElementById('azStart').value);
     const azEnd = parseFloat(document.getElementById('azEnd').value);
     const horizonProfile = getHorizonRows();
     const ceilingProfile = getCeilingRows();
-    const lowestPossibleMinEl = horizonProfile.length ? Math.min(...horizonProfile.map(p=>p.minEl)) : 90;
+    const lowestPossibleMinEl = quickFilterMinEl(horizonProfile);
     const startStr = document.getElementById('startDate').value;
-    const daysAhead = parseInt(document.getElementById('daysAhead').value, 10) || 30;
+    const daysAhead = readDaysAhead();
     const twilight = parseFloat(document.getElementById('twilight').value);
 
     const dsoMaxMag = parseFloat(document.getElementById('dsoMaxMag').value);
@@ -3384,48 +3778,63 @@
     if(catNebulae) DSO_NEBULA_TYPES.forEach(t=>allowedTypes.add(t));
 
     const startJD = jdFromDate(new Date(startStr + 'T00:00:00Z'));
-    const params = { lat, lon, azStart, azEnd, horizonProfile, ceilingProfile, twilight, startJD, daysAhead };
+    if(!isFinite(startJD)){ showToast('Bitte ein gültiges Start-Datum angeben.'); return; }
+    const grid = buildNightGrid(lat, lon, twilight, startJD, daysAhead);
+    const params = { lat, lon, azStart, azEnd, horizonProfile, ceilingProfile, twilight, startJD, daysAhead, grid };
     lastDsoComputeParams = params;
 
-    const results = [];
     setHighlight(null);
     closeDsoNightsView();
 
-    for(const obj of DSO_CATALOG){
-      if(!allowedTypes.has(obj.type)) continue;
-      if(messierOnly && !obj.messier) continue;
-      if(isFinite(dsoMaxMag) && obj.mag !== null && obj.mag > dsoMaxMag) continue;
-      if(isFinite(dsoMinSize) && obj.size !== null && obj.size < dsoMinSize) continue;
+    const candidates = DSO_CATALOG.filter(obj =>
+      allowedTypes.has(obj.type)
+      && !(messierOnly && !obj.messier)
+      && !(isFinite(dsoMaxMag) && obj.mag !== null && obj.mag > dsoMaxMag)
+      && !(isFinite(dsoMinSize) && obj.size !== null && obj.size < dsoMinSize)
+      && (90 - Math.abs(lat - obj.dec)) >= lowestPossibleMinEl);
 
-      const maxPossibleAlt = 90 - Math.abs(lat - obj.dec);
-      if(maxPossibleAlt < lowestPossibleMinEl) continue;
+    const token = ++dsoRunToken;
+    const btn = document.getElementById('computeDsoBtn');
+    btn.disabled = true;
+    btn.setAttribute('aria-busy', 'true');
+    const results = [];
+    try{
+      for(let i=0; i<candidates.length; i++){
+        if(i % 20 === 0){
+          btn.textContent = `Berechne … ${Math.round(i / candidates.length * 100)} %`;
+          await new Promise(r=>setTimeout(r, 0));
+          if(token !== dsoRunToken) return; // abgebrochen - Knopf wurde von cancelDsoRun() zurückgesetzt
+        }
+        const obj = candidates[i];
+        const nights = computeNightlyRunsForTarget(obj.ra, obj.dec, params);
+        const observableNights = nights.filter(n=>n.observable);
+        if(!observableNights.length) continue;
+        const bestRun = observableNights.reduce((best,n)=> (!best || n.durMin > best.durMin) ? n : best, null);
 
-      const nights = computeNightlyRunsForTarget(obj.ra, obj.dec, params);
-      const observableNights = nights.filter(n=>n.observable);
-      if(!observableNights.length) continue;
-      const nightsObservable = observableNights.length;
-      const bestRun = observableNights.reduce((best,n)=> (!best || n.durMin > best.durMin) ? n : best, null);
-
-      const displayName = obj.common ? `${obj.name} (${obj.common})` : obj.name;
-      results.push({
-        pl_name: displayName,
-        hostname: obj.catalogRef || obj.name,
-        ra: obj.ra, dec: obj.dec,
-        constellation: constellationFullName(obj.constAbbr),
-        type: obj.type,
-        typeLabel: DSO_TYPE_LABELS[obj.type] || obj.type,
-        mag: obj.mag,
-        size: obj.size,
-        nightsObservable, totalNights: daysAhead,
-        tMid: bestRun.tMid,
-        winStart: bestRun.winStart,
-        winEnd: bestRun.winEnd,
-        maxWindowMin: bestRun.durMin,
-        maxAlt: bestRun.maxAlt,
-        bestDateStr: bestRun.dateStr,
-        path: bestRun.path,
-        messier: obj.messier
-      });
+        const displayName = obj.common ? `${obj.name} (${obj.common})` : obj.name;
+        results.push({
+          pl_name: displayName,
+          hostname: obj.catalogRef || obj.name,
+          ra: obj.ra, dec: obj.dec,
+          constellation: constellationFullName(obj.constAbbr),
+          type: obj.type,
+          typeLabel: DSO_TYPE_LABELS[obj.type] || obj.type,
+          mag: obj.mag,
+          size: obj.size,
+          nightsObservable: observableNights.length, totalNights: daysAhead,
+          tMid: bestRun.tMid,
+          winStart: bestRun.winStart,
+          winEnd: bestRun.winEnd,
+          maxWindowMin: bestRun.durMin,
+          maxAlt: bestRun.maxAlt,
+          bestDateStr: bestRun.dateStr,
+          path: bestRun.path,
+          moon: moonInfo(bestRun.tMid, obj.ra, obj.dec, lat, lon),
+          messier: obj.messier
+        });
+      }
+    } finally {
+      if(token === dsoRunToken) resetDsoButton();
     }
 
     results.sort((a,b)=>b.nightsObservable - a.nightsObservable);
@@ -3507,38 +3916,90 @@
         .map((o, i) => ({ label: calls[i].label, ok: o.status === 'fulfilled' }))
         .filter(r => !r.ok)
         .map(r => r.label);
+      // Von einer HTTPS-Seite (GitHub Pages) aus blockieren manche Browser Anfragen an http://localhost
+      // (Safari grundsätzlich; Chrome fragt ggf. nach der Erlaubnis für das lokale Netzwerk).
+      const httpsHint = location.protocol === 'https:'
+        ? ' Hinweis: Diese Seite läuft über HTTPS – manche Browser blockieren von dort Anfragen an http://localhost (Safari grundsätzlich; Chrome fragt ggf. nach dem Zugriff auf Geräte im lokalen Netzwerk – bitte erlauben). Alternativ das Tool lokal über „Transit-Planer starten.command“ öffnen.'
+        : '';
       if(failed.length === 0){
         showToast(`An Stellarium gesendet: Zeit auf Fensterbeginn (${fmtBerlin(winStartJD)}) gestellt, Ansicht auf Wirtsstern „${hostname}“ zentriert und mit einem Kreuz markiert. Erfolg lässt sich technisch nicht auslesen – bitte in Stellarium direkt prüfen.`);
       } else if(failed.length < calls.length){
-        showToast(`Teilweise an Stellarium gesendet (fehlgeschlagen: ${failed.join(', ')}). Möglicherweise unterstützt Ihre Stellarium-Version diesen Befehl nicht, oder die Verbindung wurde zwischendurch unterbrochen.`);
+        showToast(`Teilweise an Stellarium gesendet (fehlgeschlagen: ${failed.join(', ')}). Möglicherweise unterstützt Ihre Stellarium-Version diesen Befehl nicht, oder die Verbindung wurde zwischendurch unterbrochen.${httpsHint}`);
       } else {
-        showToast(`Verbindung zu Stellarium fehlgeschlagen. Läuft Stellarium, und ist unter Configuration Window → Plugins → Remote Control → Configure „Server enabled“ aktiviert?`);
+        showToast(`Verbindung zu Stellarium fehlgeschlagen. Läuft Stellarium, und ist unter Configuration Window → Plugins → Remote Control → Configure „Server enabled“ aktiviert?${httpsHint}`);
       }
     });
   }
 
   function eventLinks(r){
     const nasaUrl = `https://exoplanetarchive.ipac.caltech.edu/overview/${encodeURIComponent(r.hostname)}`;
-    return `<a href="${nasaUrl}" target="_blank">NASA&nbsp;↗</a><a href="#" class="stellarium-link" data-name="${escapeHtml(r.hostname)}" data-ra="${r.ra}" data-dec="${r.dec}" data-winstart="${r.winStart}">Stellarium&nbsp;↗</a>`;
+    return `<a href="${nasaUrl}" target="_blank" rel="noopener">NASA&nbsp;↗</a><a href="#" class="stellarium-link" data-name="${escapeHtml(r.hostname)}" data-ra="${r.ra}" data-dec="${r.dec}" data-winstart="${r.winStart}">Stellarium&nbsp;↗</a>`;
+  }
+  function eventLinksDso(r){
+    const wikiUrl = `https://de.wikipedia.org/wiki/Spezial:Suche?search=${encodeURIComponent(r.pl_name)}`;
+    return `<a href="${wikiUrl}" target="_blank" rel="noopener">Wikipedia&nbsp;↗</a><a href="#" class="stellarium-link" data-name="${escapeHtml(r.hostname)}" data-ra="${r.ra}" data-dec="${r.dec}" data-winstart="${r.winStart}">Stellarium&nbsp;↗</a>`;
   }
 
-  let sortKey = 'tmid', sortAsc = true;
-  document.querySelectorAll('#resultsTable thead th[data-key]').forEach(th=>{
-    th.addEventListener('click', ()=>{
-      const key = th.getAttribute('data-key');
-      if(sortKey === key) sortAsc = !sortAsc; else { sortKey = key; sortAsc = true; }
-      renderTable();
+  // ---------- Gemeinsame Tabellen-Helfer (vorher dreifach fast identisch kopiert) ----------
+  // Sortierzustand je Tabelle als kleines Objekt {key, asc}.
+  const exoSort = { key: 'tmid', asc: true };
+  const dsoSort = { key: 'nights', asc: false };
+  const nowSort = { key: 'remaining', asc: false };
+
+  function sortRows(rows, keyFns, state, fallbackKey){
+    const keyFn = keyFns[state.key] || keyFns[fallbackKey];
+    return rows.slice().sort((a,b)=>{
+      const va=keyFn(a), vb=keyFn(b);
+      if(va<vb) return state.asc?-1:1;
+      if(va>vb) return state.asc?1:-1;
+      return 0;
     });
+  }
+  // Spaltenköpfe sortierbar machen - per Klick UND per Tastatur (Tab, dann Enter/Leertaste; siehe
+  // globaler keydown-Handler unten).
+  function makeSortable(tableId, state, render){
+    document.querySelectorAll(`#${tableId} thead th[data-key]`).forEach(th=>{
+      th.tabIndex = 0;
+      th.addEventListener('click', ()=>{
+        const key = th.dataset.key;
+        if(state.key === key) state.asc = !state.asc; else { state.key = key; state.asc = true; }
+        render();
+      });
+    });
+  }
+  // Aktuelle Sortierung per aria-sort melden (Screenreader) - die Pfeile ▲/▼ kommen per CSS daraus.
+  function updateSortIndicators(tableId, state){
+    document.querySelectorAll(`#${tableId} thead th[data-key]`).forEach(th=>{
+      if(th.dataset.key === state.key) th.setAttribute('aria-sort', state.asc ? 'ascending' : 'descending');
+      else th.removeAttribute('aria-sort');
+    });
+  }
+  // Gemeinsame Attribute einer anklickbaren Ergebniszeile: per Tab erreichbar, gewählte Zeile mit
+  // aria-current statt nur farblich markiert.
+  function rowAttrs(idx, r){
+    const hl = r === highlightedRow;
+    return `data-idx="${idx}" tabindex="0" class="${hl ? 'row-highlighted' : ''}"${hl ? ' aria-current="true"' : ''}`;
+  }
+  // Enter/Leertaste auf einer fokussierten Ergebniszeile oder einem Spaltenkopf wirkt wie ein Klick.
+  document.addEventListener('keydown', (e)=>{
+    if(e.key !== 'Enter' && e.key !== ' ') return;
+    const t = e.target;
+    if(t instanceof Element && t.matches('tr[data-idx][tabindex], th[data-key][tabindex]')){
+      e.preventDefault();
+      t.click();
+    }
   });
-  document.getElementById('searchBox').addEventListener('input', renderTable);
+
+  // ---------- Exoplaneten-Tabelle ----------
+  makeSortable('resultsTable', exoSort, ()=>renderTable());
+  document.getElementById('searchBox').addEventListener('input', ()=>renderTable());
 
   let currentRenderedRows = [];
 
   function renderTable(){
     const q = document.getElementById('searchBox').value.trim().toLowerCase();
-    let rows = allRows.filter(r => !q || r.pl_name.toLowerCase().includes(q) || (r.hostname||'').toLowerCase().includes(q));
-
-    const keyFn = {
+    const filtered = allRows.filter(r => !q || r.pl_name.toLowerCase().includes(q) || (r.hostname||'').toLowerCase().includes(q));
+    const rows = sortRows(filtered, {
       tmid: r=>r.tMid,
       pl_name: r=>r.pl_name,
       constellation: r=>r.constellation,
@@ -3549,20 +4010,13 @@
       altRange: r=>r.minAlt,
       azRange: r=>r.transitAzStart,
       status: r=>r.status
-    }[sortKey] || (r=>r.tMid);
-    rows = rows.slice().sort((a,b)=>{
-      const va=keyFn(a), vb=keyFn(b);
-      if(va<vb) return sortAsc?-1:1;
-      if(va>vb) return sortAsc?1:-1;
-      return 0;
-    });
+    }, exoSort, 'tmid');
     currentRenderedRows = rows;
 
     const varSearchUrl = 'https://var.astro.cz/en/Exoplanets';
-    const tbody = document.getElementById('resultsBody');
-    tbody.innerHTML = rows.map((r,idx)=>`
-      <tr data-idx="${idx}" class="${r===highlightedRow?'row-highlighted':''}">
-        <td><a class="result-name-link" href="${varSearchUrl}" target="_blank" title="Suche auf var.astro.cz nach ${escapeHtml(r.pl_name)}"><strong>${escapeHtml(r.pl_name)}</strong></a></td>
+    document.getElementById('resultsBody').innerHTML = rows.map((r,idx)=>`
+      <tr ${rowAttrs(idx, r)}>
+        <td><a class="result-name-link" href="${varSearchUrl}" target="_blank" rel="noopener" title="Suche auf var.astro.cz nach ${escapeHtml(r.pl_name)}"><strong>${escapeHtml(r.pl_name)}</strong></a></td>
         <td>${escapeHtml(r.constellation.replace(/\s*\([^)]*\)\s*$/, ''))}</td>
         <td>${r.sy_vmag===null?'&ndash;':r.sy_vmag.toFixed(1)}</td>
         <td>${r.depthPct===null?'&ndash;':r.depthPct.toFixed(2)+'%'}</td>
@@ -3571,97 +4025,57 @@
         <td>${r.minAlt.toFixed(0)}&deg;&ndash;${r.maxAlt.toFixed(0)}&deg;</td>
         <td>${r.transitAzStart.toFixed(0)}&deg;&rarr;${r.transitAzEnd.toFixed(0)}&deg;</td>
         <td class="status-cell"><span class="badge ${r.statusClass}">${r.status}</span></td>
+        <td>${moonCellHtml(r.moon)}</td>
         <td class="links">${eventLinks(r)}</td>
       </tr>
     `).join('');
     document.getElementById('rowCount').textContent = rows.length + ' Ergebnisse';
+    updateSortIndicators('resultsTable', exoSort);
   }
 
-  // Ein delegierter Click-Handler, wiederverwendet für beide Ergebnistabellen (Exoplaneten und
-  // DSO): Stellarium-Links, normale Links (var.astro.cz/NASA, navigieren normal), und Klick auf
-  // die Zeile selbst (zeigt Bahn im Diagramm bzw. hebt die Markierung wieder auf).
-  function makeRowClickHandler(getRenderedRows){
+  // Delegierter Click-Handler für Ergebnistabellen: Stellarium-Links, normale Links (navigieren
+  // normal) und Klick auf die Zeile selbst. onRow(row) entscheidet, was ein Zeilenklick bewirkt.
+  function handleStellariumClick(e){
+    const link = e.target.closest('.stellarium-link');
+    if(!link) return false;
+    e.preventDefault();
+    stellariumFocus(link.dataset.name, parseFloat(link.dataset.ra), parseFloat(link.dataset.dec), parseFloat(link.dataset.winstart));
+    return true;
+  }
+  function toggleHighlight(row){
+    if(row === highlightedRow){
+      // Gleiche Zeile erneut angeklickt -> Markierung aufheben (kein Scroll, Diagramm ist ja sichtbar).
+      setHighlight(null);
+    } else {
+      setHighlight(row);
+      scrollToCompass();
+    }
+  }
+  function makeRowClickHandler(getRenderedRows, onRow){
     return (e)=>{
-      const stellariumLink = e.target.closest('.stellarium-link');
-      if(stellariumLink){
-        e.preventDefault();
-        stellariumFocus(
-          stellariumLink.dataset.name,
-          parseFloat(stellariumLink.dataset.ra),
-          parseFloat(stellariumLink.dataset.dec),
-          parseFloat(stellariumLink.dataset.winstart)
-        );
-        return;
-      }
-      if(e.target.closest('a')) return; // var.astro.cz / NASA normal navigieren lassen
+      if(handleStellariumClick(e)) return;
+      if(e.target.closest('a')) return; // var.astro.cz / NASA / Wikipedia normal navigieren lassen
       const tr = e.target.closest('tr[data-idx]');
-      if(tr){
-        const idx = parseInt(tr.dataset.idx, 10);
-        const row = getRenderedRows()[idx];
-        if(row){
-          if(row === highlightedRow){
-            // Gleiche Zeile erneut angeklickt -> Markierung aufheben (kein Scroll, da Diagramm ja
-            // schon sichtbar ist).
-            setHighlight(null);
-          } else {
-            setHighlight(row);
-            document.getElementById('compassSvg').scrollIntoView({behavior:'smooth', block:'center'});
-          }
-        }
-      }
+      if(!tr) return;
+      const row = getRenderedRows()[parseInt(tr.dataset.idx, 10)];
+      if(row) (onRow || toggleHighlight)(row);
     };
   }
   document.getElementById('resultsBody').addEventListener('click', makeRowClickHandler(()=>currentRenderedRows));
 
-  // Eigener Click-Handler für die DSO-Objekttabelle statt makeRowClickHandler(): ein Klick auf eine
-  // Objekt-Zeile öffnet zusätzlich zur Bahn-Anzeige die Nacht-für-Nacht-Ansicht für genau dieses
-  // Objekt (siehe openDsoNightsView() weiter unten) - Stellarium-/Wikipedia-Links funktionieren wie
-  // gewohnt weiter, "erneutes Anklicken hebt Markierung auf" entfällt hier bewusst (die Objekttabelle
-  // ist nach dem ersten Klick ohnehin nicht mehr sichtbar).
-  document.getElementById('resultsBodyDso').addEventListener('click', (e)=>{
-    const stellariumLink = e.target.closest('.stellarium-link');
-    if(stellariumLink){
-      e.preventDefault();
-      stellariumFocus(
-        stellariumLink.dataset.name,
-        parseFloat(stellariumLink.dataset.ra),
-        parseFloat(stellariumLink.dataset.dec),
-        parseFloat(stellariumLink.dataset.winstart)
-      );
-      return;
-    }
-    if(e.target.closest('a')) return; // var.astro.cz / NASA / Wikipedia normal navigieren lassen
-    const tr = e.target.closest('tr[data-idx]');
-    if(!tr) return;
-    const idx = parseInt(tr.dataset.idx, 10);
-    const row = currentRenderedRowsDso[idx];
-    if(row) openDsoNightsView(row);
-  });
-
   // ---------- Deep-Sky-Objekte: Tabelle & Bedienung ----------
-  function eventLinksDso(r){
-    const wikiUrl = `https://de.wikipedia.org/wiki/Spezial:Suche?search=${encodeURIComponent(r.pl_name)}`;
-    return `<a href="${wikiUrl}" target="_blank">Wikipedia&nbsp;↗</a><a href="#" class="stellarium-link" data-name="${escapeHtml(r.hostname)}" data-ra="${r.ra}" data-dec="${r.dec}" data-winstart="${r.winStart}">Stellarium&nbsp;↗</a>`;
-  }
+  // Ein Klick auf eine Objekt-Zeile öffnet zusätzlich zur Bahn-Anzeige die Nacht-für-Nacht-Ansicht.
+  document.getElementById('resultsBodyDso').addEventListener('click', makeRowClickHandler(()=>currentRenderedRowsDso, row=>openDsoNightsView(row)));
 
-  let sortKeyDso = 'nights', sortAscDso = false;
-  document.querySelectorAll('#resultsTableDso thead th[data-key]').forEach(th=>{
-    th.addEventListener('click', ()=>{
-      const key = th.getAttribute('data-key');
-      if(sortKeyDso === key) sortAscDso = !sortAscDso; else { sortKeyDso = key; sortAscDso = true; }
-      renderTableDso();
-    });
-  });
-  document.getElementById('searchBoxDso').addEventListener('input', renderTableDso);
-  document.getElementById('computeDsoBtn').addEventListener('click', computeDso);
+  makeSortable('resultsTableDso', dsoSort, ()=>renderTableDso());
+  document.getElementById('searchBoxDso').addEventListener('input', ()=>renderTableDso());
+  document.getElementById('computeDsoBtn').addEventListener('click', ()=>computeDso());
 
   let currentRenderedRowsDso = [];
 
   function renderTableDso(){
     const q = document.getElementById('searchBoxDso').value.trim().toLowerCase();
-    let rows = allRowsDso.filter(r => !q || r.pl_name.toLowerCase().includes(q));
-
-    const keyFn = {
+    const rows = sortRows(allRowsDso.filter(r => !q || r.pl_name.toLowerCase().includes(q)), {
       name: r=>r.pl_name,
       typeLabel: r=>r.typeLabel,
       constellation: r=>r.constellation,
@@ -3670,18 +4084,11 @@
       nights: r=>r.nightsObservable,
       maxWindow: r=>r.maxWindowMin,
       tmid: r=>r.tMid
-    }[sortKeyDso] || (r=>r.nightsObservable);
-    rows = rows.slice().sort((a,b)=>{
-      const va=keyFn(a), vb=keyFn(b);
-      if(va<vb) return sortAscDso?-1:1;
-      if(va>vb) return sortAscDso?1:-1;
-      return 0;
-    });
+    }, dsoSort, 'nights');
     currentRenderedRowsDso = rows;
 
-    const tbody = document.getElementById('resultsBodyDso');
-    tbody.innerHTML = rows.map((r,idx)=>`
-      <tr data-idx="${idx}" class="${r===highlightedRow?'row-highlighted':''}">
+    document.getElementById('resultsBodyDso').innerHTML = rows.map((r,idx)=>`
+      <tr ${rowAttrs(idx, r)}>
         <td><strong>${escapeHtml(r.pl_name)}</strong></td>
         <td>${escapeHtml(r.typeLabel)}</td>
         <td>${escapeHtml(r.constellation)}</td>
@@ -3690,34 +4097,36 @@
         <td>${r.nightsObservable} / ${r.totalNights}</td>
         <td>${fmtDurationMin(r.maxWindowMin)}</td>
         <td>${fmtBerlin(r.winStart)}<br>&ndash; ${fmtBerlin(r.winEnd)}<br><span class="small">max. ${r.maxAlt.toFixed(0)}&deg;</span></td>
+        <td>${moonCellHtml(r.moon)}</td>
         <td class="links">${eventLinksDso(r)}</td>
       </tr>
     `).join('');
     document.getElementById('rowCountDso').textContent = rows.length + ' Ergebnisse';
+    updateSortIndicators('resultsTableDso', dsoSort);
   }
 
   // ---------- Deep-Sky-Objekte: Nacht-für-Nacht-Ansicht ----------
   // Ersetzt beim Anklicken eines Objekts die Objekttabelle durch eine Tabelle mit jeder einzelnen
-  // Nacht im gewählten Zeitraum (Zeitfenster/Dauer/max. Höhe an diesem Standort); "Zurück" kehrt zur
-  // Objekttabelle zurück. currentRenderedRowsDsoNights/dsoNightsViewOpen siehe activeTbodyId()/
-  // activeRenderedRows() weiter oben - darüber bleibt setHighlight()'s Zeilen-Markierung auch hier
-  // korrekt.
+  // Nacht im gewählten Zeitraum (Zeitfenster/Dauer/max. Höhe/Mond an diesem Standort); "Zurück" kehrt
+  // zur Objekttabelle zurück. currentRenderedRowsDsoNights/dsoNightsViewOpen siehe activeTbodyId()/
+  // activeRenderedRows() weiter oben - darüber bleibt setHighlight()'s Zeilen-Markierung auch hier korrekt.
   let currentRenderedRowsDsoNights = [];
 
   function renderDsoNightsTable(){
-    const tbody = document.getElementById('resultsBodyDsoNights');
     const rows = currentRenderedRowsDsoNights;
-    tbody.innerHTML = rows.map((r,idx)=>{
+    document.getElementById('resultsBodyDsoNights').innerHTML = rows.map((r,idx)=>{
       const dateLabel = new Date(r.dateStr + 'T00:00:00Z')
         .toLocaleDateString('de-DE', {timeZone:'UTC', day:'2-digit', month:'2-digit', year:'numeric'});
       if(!r.observable){
-        return `<tr data-idx="${idx}" class="row-unobservable"><td>${dateLabel}</td><td colspan="3" class="small">nicht beobachtbar</td></tr>`;
+        // Nicht beobachtbare Nächte sind bewusst nicht auswählbar (kein tabindex).
+        return `<tr data-idx="${idx}" class="row-unobservable"><td>${dateLabel}</td><td colspan="4" class="small">nicht beobachtbar</td></tr>`;
       }
-      return `<tr data-idx="${idx}" class="${r===highlightedRow?'row-highlighted':''}">
+      return `<tr ${rowAttrs(idx, r)}>
         <td>${dateLabel}</td>
         <td>${fmtBerlin(r.winStart)}<br>&ndash; ${fmtBerlin(r.winEnd)}</td>
         <td>${fmtDurationMin(r.durMin)}</td>
         <td>${r.maxAlt.toFixed(0)}&deg;</td>
+        <td>${moonCellHtml(r.moon)}</td>
       </tr>`;
     }).join('');
     const observableCount = rows.filter(r=>r.observable).length;
@@ -3733,13 +4142,16 @@
     // gleich befüllte Nächte-Tabelle (siehe activeTbodyId()/activeRenderedRows() oben).
     setHighlight(row);
     document.getElementById('dsoNightsTitle').textContent = row.pl_name;
+    const { lat, lon } = lastDsoComputeParams;
     currentRenderedRowsDsoNights = computeNightlyRunsForTarget(row.ra, row.dec, lastDsoComputeParams)
-      .map(n => ({ ...n, pl_name: row.pl_name }));
+      .map(n => ({ ...n, pl_name: row.pl_name, moon: n.observable ? moonInfo(n.tMid, row.ra, row.dec, lat, lon) : null }));
     dsoNightsViewOpen = true;
     renderDsoNightsTable();
     document.getElementById('resultsCardDso').style.display = 'none';
     document.getElementById('resultsCardDsoNights').style.display = '';
-    document.getElementById('compassSvg').scrollIntoView({behavior:'smooth', block:'center'});
+    // Tastaturfokus auf "Zurück" - sonst bliebe er auf der jetzt ausgeblendeten Objektzeile.
+    document.getElementById('dsoNightsBackBtn').focus({preventScroll:true});
+    scrollToCompass();
   }
 
   function closeDsoNightsView(){
@@ -3753,22 +4165,10 @@
 
   document.getElementById('dsoNightsBackBtn').addEventListener('click', closeDsoNightsView);
 
-  // Klick auf eine Nacht in der Nächte-Tabelle zeigt deren Bahn im Diagramm (bzw. hebt die Markierung
-  // wieder auf, wenn dieselbe Nacht erneut angeklickt wird) - analog zum Verhalten der Objekt-/
-  // Exoplaneten-Tabellen. Nicht beobachtbare Nächte (leeres Fenster) sind bewusst nicht anklickbar.
-  document.getElementById('resultsBodyDsoNights').addEventListener('click', (e)=>{
-    const tr = e.target.closest('tr[data-idx]');
-    if(!tr) return;
-    const idx = parseInt(tr.dataset.idx, 10);
-    const row = currentRenderedRowsDsoNights[idx];
-    if(!row || !row.observable) return;
-    if(row === highlightedRow){
-      setHighlight(null);
-    } else {
-      setHighlight(row);
-      document.getElementById('compassSvg').scrollIntoView({behavior:'smooth', block:'center'});
-    }
-  });
+  // Klick auf eine Nacht zeigt deren Bahn im Diagramm (bzw. hebt die Markierung wieder auf).
+  // Nicht beobachtbare Nächte (leeres Fenster) sind bewusst nicht anklickbar.
+  document.getElementById('resultsBodyDsoNights').addEventListener('click',
+    makeRowClickHandler(()=>currentRenderedRowsDsoNights, row=>{ if(row.observable) toggleHighlight(row); }));
 
   // ---------- "Jetzt": ab dem aktuellen Zeitpunkt noch mindestens X Stunden sichtbare Objekte ----------
   // Gleiche Geometrie/Dunkelheits-Logik wie bei den Deep-Sky-Objekten (Azimut-Grenzen, untere/obere
@@ -3781,8 +4181,14 @@
   let currentRenderedRowsNow = [];
   const NOW_LOOKAHEAD_H = 14;
   const NOW_STEP_MIN = 5;
+  // Automatische Aktualisierung: alle 10 Minuten (nur solange "Jetzt" aktiv und die Seite sichtbar
+  // ist) - so bleibt die Liste während einer Beobachtungsnacht aktuell, ohne ständig zu tippen.
+  const NOW_AUTO_REFRESH_MS = 10 * 60 * 1000;
+  let lastNowComputeAt = 0;
 
-  function computeNow(){
+  // opts.keepHighlight: bei der automatischen Aktualisierung die gewählte Bahn (per Name) beibehalten.
+  function computeNow(opts){
+    const keepName = (opts && opts.keepHighlight && highlightedRow) ? highlightedRow.pl_name : null;
     const lat = parseFloat(document.getElementById('lat').value);
     const lon = parseFloat(document.getElementById('lon').value);
     const azStart = parseFloat(document.getElementById('azStart').value);
@@ -3791,37 +4197,34 @@
     const ceilingProfile = getCeilingRows();
     const twilight = parseFloat(document.getElementById('twilight').value);
     const minH = Math.max(0.5, parseFloat(document.getElementById('nowMinHours').value) || 2);
-    // Grobe Vorab-Aussortierung: Objekte, deren maximal mögliche Höhe selbst unter der niedrigsten
-    // (gepufferten) Mindesthöhe liegt, können nie im Fenster stehen.
-    const lowestPossibleMinEl = horizonProfile.length ? Math.min(...horizonProfile.map(p=>p.minEl)) - SAFETY_MARGIN_DEG : 90;
+    const lowestPossibleMinEl = quickFilterMinEl(horizonProfile);
 
     const nowJd = jdFromDate(new Date());
+    lastNowComputeAt = Date.now();
     const maxSteps = Math.round(NOW_LOOKAHEAD_H * 60 / NOW_STEP_MIN);
     setHighlight(null);
 
-    // Dunkelheit hängt nicht vom Objekt ab -> einmal vorab für alle Zeitschritte berechnen.
-    const darkOk = [];
+    // Zeitpunkt, Sternzeit und Dunkelheit hängen nicht vom Objekt ab -> einmal vorab berechnen.
+    const grid = [];
     for(let s=0; s<=maxSteps; s++){
-      darkOk.push(sunAltitude(nowJd + s*NOW_STEP_MIN/1440, lat, lon) <= twilight);
+      const jd = nowJd + s*NOW_STEP_MIN/1440;
+      grid.push({ jd, lst: norm360(gmstDeg(jd) + lon), dark: sunAltitude(jd, lat, lon) <= twilight });
     }
 
     const results = [];
-    if(darkOk[0]){
+    if(grid[0].dark){
       for(const obj of DSO_CATALOG){
-        const maxPossibleAlt = 90 - Math.abs(lat - obj.dec);
-        if(maxPossibleAlt < lowestPossibleMinEl) continue;
+        if(90 - Math.abs(lat - obj.dec) < lowestPossibleMinEl) continue;
         const path = [];
         let maxAlt = -999;
-        for(let s=0; s<=maxSteps; s++){
-          if(!darkOk[s]) break;
-          const jd = nowJd + s*NOW_STEP_MIN/1440;
-          const pos = altAz(jd, obj.ra, obj.dec, lat, lon);
-          const inAzWindow = pos.az >= azStart && pos.az <= azEnd;
-          if(!inAzWindow) break;
+        for(const step of grid){
+          if(!step.dark) break;
+          const pos = altAzFromLst(step.lst, obj.ra, obj.dec, lat);
+          if(!azInWindow(pos.az, azStart, azEnd)) break;
           const b = bufferedElevationBounds(pos.az, horizonProfile, ceilingProfile);
           if(pos.alt < b.minEl || pos.alt > b.maxEl) break;
           if(pos.alt > maxAlt) maxAlt = pos.alt;
-          path.push({ az: pos.az, alt: pos.alt, jd });
+          path.push({ az: pos.az, alt: pos.alt, jd: step.jd });
         }
         if(!path.length) continue;
         const remainingMin = (path.length - 1) * NOW_STEP_MIN;
@@ -3844,22 +4247,37 @@
           // Läuft das Fenster bis ans Ende der Vorschau, ist das Ende nur eine Untergrenze.
           openEnded: path.length === maxSteps + 1,
           path,
+          moon: moonInfo(nowJd, obj.ra, obj.dec, lat, lon),
           messier: obj.messier
         });
       }
     }
     allRowsNow = results;
     renderTableNow();
-    renderSummaryNow(results, lat, lon, darkOk[0], minH, nowJd);
+    renderSummaryNow(results, lat, lon, grid[0].dark, minH, nowJd);
+    if(keepName){
+      const again = allRowsNow.find(r=>r.pl_name === keepName);
+      if(again) setHighlight(again);
+    }
   }
+
+  function maybeAutoRefreshNow(){
+    if(currentMode !== 'now' || document.hidden) return;
+    if(Date.now() - lastNowComputeAt >= NOW_AUTO_REFRESH_MS) computeNow({keepHighlight:true});
+  }
+  setInterval(maybeAutoRefreshNow, 60 * 1000);
+  document.addEventListener('visibilitychange', maybeAutoRefreshNow);
 
   function renderSummaryNow(results, lat, lon, isDark, minH, nowJd){
     const minHStr = String(minH).replace('.', ',');
+    const m = moonInfo(nowJd, null, null, lat, lon);
+    const moonStr = `Mond: ${moonPhaseText(m)}, ${m.alt >= 0 ? `${m.alt.toFixed(0)}° über dem Horizont` : 'unter dem Horizont'}. `;
+    const refreshStr = 'Aktualisiert sich automatisch alle 10&nbsp;Minuten. ';
     if(!isDark){
       document.getElementById('summary').innerHTML =
         `Stand ${fmtBerlin(nowJd)}: Es ist gerade <strong>noch nicht dunkel genug</strong> ` +
         `(Sonne über der gewählten Dämmerungsgrenze) – daher ist aktuell kein Objekt beobachtbar. ` +
-        `Später erneut „Aktualisieren“ anklicken. Standort: ${lat.toFixed(4)}°N, ${lon.toFixed(4)}°O.`;
+        refreshStr + `Standort: ${lat.toFixed(4)}°N, ${lon.toFixed(4)}°O.`;
       return;
     }
     const messierCount = results.filter(r=>r.messier).length;
@@ -3867,25 +4285,17 @@
       `Stand ${fmtBerlin(nowJd)}: ${DSO_CATALOG.length} Deep-Sky-Objekte geprüft. ` +
       `<strong>${results.length}</strong> davon sind jetzt sichtbar und bleiben es noch mindestens ` +
       `${minHStr}&nbsp;h (davon <strong>${messierCount}</strong> Messier-Objekte). ` +
-      `Standort: ${lat.toFixed(4)}°N, ${lon.toFixed(4)}°O.`;
+      moonStr + refreshStr + `Standort: ${lat.toFixed(4)}°N, ${lon.toFixed(4)}°O.`;
   }
 
-  let sortKeyNow = 'remaining', sortAscNow = false;
-  document.querySelectorAll('#resultsTableNow thead th[data-key]').forEach(th=>{
-    th.addEventListener('click', ()=>{
-      const key = th.getAttribute('data-key');
-      if(sortKeyNow === key) sortAscNow = !sortAscNow; else { sortKeyNow = key; sortAscNow = true; }
-      renderTableNow();
-    });
-  });
-  document.getElementById('searchBoxNow').addEventListener('input', renderTableNow);
-  document.getElementById('computeNowBtn').addEventListener('click', computeNow);
+  makeSortable('resultsTableNow', nowSort, ()=>renderTableNow());
+  document.getElementById('searchBoxNow').addEventListener('input', ()=>renderTableNow());
+  document.getElementById('computeNowBtn').addEventListener('click', ()=>computeNow());
   document.getElementById('resultsBodyNow').addEventListener('click', makeRowClickHandler(()=>currentRenderedRowsNow));
 
   function renderTableNow(){
     const q = document.getElementById('searchBoxNow').value.trim().toLowerCase();
-    let rows = allRowsNow.filter(r => !q || r.pl_name.toLowerCase().includes(q));
-    const keyFn = {
+    const rows = sortRows(allRowsNow.filter(r => !q || r.pl_name.toLowerCase().includes(q)), {
       name: r=>r.pl_name,
       typeLabel: r=>r.typeLabel,
       constellation: r=>r.constellation,
@@ -3893,17 +4303,10 @@
       size: r=>r.size===null?-1:r.size,
       curAlt: r=>r.curAlt,
       remaining: r=>r.remainingMin
-    }[sortKeyNow] || (r=>r.remainingMin);
-    rows = rows.slice().sort((a,b)=>{
-      const va=keyFn(a), vb=keyFn(b);
-      if(va<vb) return sortAscNow?-1:1;
-      if(va>vb) return sortAscNow?1:-1;
-      return 0;
-    });
+    }, nowSort, 'remaining');
     currentRenderedRowsNow = rows;
-    const tbody = document.getElementById('resultsBodyNow');
-    tbody.innerHTML = rows.map((r,idx)=>`
-      <tr data-idx="${idx}" class="${r===highlightedRow?'row-highlighted':''}">
+    document.getElementById('resultsBodyNow').innerHTML = rows.map((r,idx)=>`
+      <tr ${rowAttrs(idx, r)}>
         <td><strong>${escapeHtml(r.pl_name)}</strong></td>
         <td>${escapeHtml(r.typeLabel)}</td>
         <td>${escapeHtml(r.constellation)}</td>
@@ -3911,17 +4314,25 @@
         <td>${r.size===null?'&ndash;':r.size.toFixed(1)+"'"}</td>
         <td>${r.curAlt.toFixed(0)}&deg; / ${r.curAz.toFixed(0)}&deg;<br><span class="small">max. ${r.maxAlt.toFixed(0)}&deg;</span></td>
         <td>${r.openEnded?'nach ':''}${fmtBerlin(r.winEnd)}<br><span class="small">${r.openEnded?'über ':'noch '}${fmtDurationMin(r.remainingMin)}</span></td>
+        <td>${moonCellHtml(r.moon)}</td>
         <td class="links">${eventLinksDso(r)}</td>
       </tr>
     `).join('');
     document.getElementById('rowCountNow').textContent = rows.length + ' Ergebnisse';
+    updateSortIndicators('resultsTableNow', nowSort);
   }
 
   // ---------- Init ----------
-  document.getElementById('startDate').value = new Date().toISOString().slice(0,10);
+  // Heutiges Datum in Berliner Ortszeit (nicht UTC): toISOString() lieferte zwischen 00:00 und
+  // 01:00/02:00 Uhr Ortszeit noch das Datum des Vortags. "sv-SE" formatiert als JJJJ-MM-TT.
+  document.getElementById('startDate').value = todayBerlinIso();
   rebuildLocationTiles();
   applyActiveLocationFields();
   drawCompass();
+  applyCompassZoom();
+  updateSortIndicators('resultsTable', exoSort);
+  updateSortIndicators('resultsTableDso', dsoSort);
+  updateSortIndicators('resultsTableNow', nowSort);
   // Nicht blockierend (async, kein await hier) und bewusst still bei jedem Fehler/fehlender Datei -
   // siehe Kommentar bei loadLocationsFromGithub() weiter oben.
   loadLocationsFromGithub(false);
