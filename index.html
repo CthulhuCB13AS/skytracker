@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Skytracker_BP17 – Version V2.26 -->
+<!-- Skytracker_BP17 – Version V2.27 -->
 <html lang="de">
 <head>
 <meta charset="UTF-8">
@@ -85,6 +85,12 @@
   }
   .profile-input[type=number]{ width:70px; }
   .profile-input[type=text]{ width:100%; }
+  /* Benachrichtigungen */
+  .notify-list{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:6px; }
+  .notify-list li{ display:flex; justify-content:space-between; align-items:center; gap:8px; background:var(--panel2); border:1px solid var(--border); border-radius:7px; padding:6px 10px; font-size:0.8rem; }
+  /* Knopf, der wie ein Link in der Links-Spalte aussieht (semantisch ein Button, da er nichts öffnet). */
+  .linklike{ background:none; border:none; padding:0; color:var(--accent); font-size:0.76rem; font-weight:400; cursor:pointer; text-align:left; }
+  .linklike:hover{ text-decoration:underline; }
   .field input[readonly]{ opacity:0.7; cursor:default; }
   /* Hoch-/Runter-Pfeile bei Zahlenfeldern ausblenden - es wird ausschließlich manuell eingetragen,
      die Spinner-Pfeile werden nicht benötigt (gilt für alle Zahlenfelder, auch außerhalb von .field,
@@ -467,6 +473,25 @@
         <h2>Zusammenfassung</h2>
         <div id="summary" class="small" aria-live="polite">Noch keine Daten geladen.</div>
       </div>
+
+      <div class="card" id="notifyCard">
+        <h2>Benachrichtigung aufs Handy</h2>
+        <p class="small" style="margin:-4px 0 12px;">Push-Nachricht, sobald ein Objekt heute Nacht im Sichtfenster des aktiven Standorts erscheint &ndash; auch wenn diese Seite geschlossen ist.</p>
+        <div class="field-row">
+          <div class="field" style="flex:2 1 200px;"><label for="notifyObject">Objekt</label><input type="text" id="notifyObject" list="notifyObjectList" placeholder="z.&nbsp;B. M31, Andromeda, NGC 7000" autocomplete="off"></div>
+          <div class="field" style="flex:1 1 110px;"><label for="notifyLead">Vorlauf (Min.)</label><input type="number" id="notifyLead" value="0" min="0" max="120" step="5"></div>
+        </div>
+        <datalist id="notifyObjectList"></datalist>
+        <div style="display:flex; flex-wrap:wrap; gap:6px;">
+          <button type="button" id="notifyBtn">Benachrichtigen</button>
+          <button type="button" id="notifySettingsBtn" class="secondary">Push einrichten</button>
+        </div>
+        <p id="notifyResult" class="small" role="status" aria-live="polite" style="margin:10px 0 0;"></p>
+        <div id="notifyListWrap" style="display:none; margin-top:12px;">
+          <h3 style="font-size:0.85rem; margin:0 0 6px;">Geplante Benachrichtigungen</h3>
+          <ul id="notifyList" class="notify-list"></ul>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -582,7 +607,7 @@
 <section class="docview" id="docView" aria-label="Dokumentation" style="display:none;">
   <button type="button" id="backToPlannerBtn" style="margin:20px 0 10px;">&larr; Zurück zum Planer</button>
 
-  <p class="small">Version: V2.26</p>
+  <p class="small">Version: V2.27</p>
   <h2>Überblick</h2>
   <p>
     Dieses Tool findet Himmelsobjekte, die mit einem Linsenteleskop (432&nbsp;mm Brennweite, 72&nbsp;mm
@@ -791,6 +816,39 @@
     sichtbar ist; eine gewählte Bahn bleibt dabei markiert. „Aktualisieren“ rechnet sofort neu. Ein Klick
     auf eine Zeile zeigt die verbleibende Bahn (ab jetzt) im Polardiagramm. Die Zusammenfassung nennt
     zusätzlich Mondphase und Mondhöhe.
+  </p>
+
+  <h2>Benachrichtigung aufs Handy</h2>
+  <p>
+    Unter „Benachrichtigung aufs Handy“ ein Objekt eingeben (Katalogname wie „M31“, „NGC 7000“,
+    „IC 5070“ oder ein gebräuchlicher Name wie „Andromeda“; bei geladenen Exoplaneten-Daten auch ein
+    Planeten- oder Sternname) und „Benachrichtigen“ antippen. Das Tool berechnet minutengenau, wann das
+    Objekt heute Nacht &ndash; bzw., falls es gerade hell ist, in der kommenden Nacht &ndash; zum ersten Mal
+    mindestens 10&nbsp;Minuten lang im Sichtfenster des aktiven Standorts steht (dieselbe Geometrie inkl.
+    Sicherheitspuffer und Dämmerungsgrenze wie in den Ergebnistabellen), und plant für genau diesen
+    Zeitpunkt eine Push-Nachricht; mit „Vorlauf“ entsprechend früher, etwa um das Teleskop
+    aufzubauen. Die Nachricht nennt Beginn, Ende, maximale Höhe und den Mond. Steht das Objekt bereits
+    im Fenster oder erscheint es in dieser Nacht gar nicht, sagt das Tool das sofort, statt etwas zu planen.
+    In der Deep-Sky-Tabelle plant „Benachrichtigen“ direkt für das jeweilige Objekt, in der
+    Exoplaneten-Tabelle für den Beginn des Beobachtungsfensters des Transits (max. 3&nbsp;Tage im Voraus).
+  </p>
+  <p>
+    <strong>Technik:</strong> Zugestellt wird über den kostenlosen Push-Dienst
+    <a href="https://ntfy.sh" target="_blank" rel="noopener">ntfy</a>. Die Nachricht wird sofort beim Planen
+    an ntfy übergeben und dort zeitversetzt ausgeliefert &ndash; deshalb kommt sie auch an, wenn Skytracker
+    längst geschlossen ist; ein eigener Server ist nicht nötig. Einmalig einrichten: App „ntfy“ installieren,
+    unter „Push einrichten“ das zufällig erzeugte Thema in der App abonnieren, „Test senden“. „Absagen“ in
+    der Liste löscht eine geplante Nachricht wieder. Wird dasselbe Objekt für dieselbe Nacht erneut geplant,
+    ersetzt die neue Nachricht die alte, statt eine zweite zu schicken. Grenzen: ntfy.sh plant höchstens
+    3&nbsp;Tage im Voraus und begrenzt die Anzahl Nachrichten pro Tag für Nutzer ohne Konto (für diesen
+    Zweck weit ausreichend); Werbe-/Tracking-Blocker oder Firmen-Firewalls können <code>ntfy.sh</code>
+    blockieren &ndash; dann schlägt schon „Test senden“ fehl. Die Berechnung nutzt den Standort, der beim
+    Planen aktiv ist; ändert man ihn später, bleibt die geplante Nachricht unverändert.
+  </p>
+  <p>
+    <strong>SMS</strong> ist bewusst nicht eingebaut: SMS-Versand kostet pro Nachricht und braucht einen
+    Zugangsschlüssel eines SMS-Anbieters, der nicht in diese öffentlich lesbare Seite gehört &ndash; dafür
+    wäre ein eigener Cloudflare-Worker (wie beim GitHub-Sync) mit gespeichertem Schlüssel und Zeitplan nötig.
   </p>
 
   <h2>Datenquelle &amp; Laden</h2>
@@ -1039,6 +1097,43 @@
   <div class="modal-actions">
     <button type="button" id="exoWorkerSettingsCancelBtn" class="secondary">Abbrechen</button>
     <button type="button" id="exoWorkerSettingsSaveBtn">Speichern</button>
+  </div>
+</dialog>
+
+<!-- Push-Einstellungen: Thema (Topic) + Server des Push-Dienstes ntfy. Nur in localStorage dieses
+     Browsers gespeichert. Kein Geheimnis im engeren Sinn, aber wer das Thema kennt, kann mitlesen -
+     daher ein zufällig erzeugter, schwer zu erratender Name. -->
+<dialog id="notifySettingsModal" class="modal">
+  <div class="modal-head">
+    <h2>Push einrichten</h2>
+    <button type="button" id="notifySettingsCloseXBtn" class="secondary btn-close" aria-label="Schließen" title="Schließen (wie Abbrechen)">&times;</button>
+  </div>
+  <ol class="small" style="margin:0 0 14px; padding-left:18px; display:flex; flex-direction:column; gap:4px;">
+    <li>Die kostenlose App <strong>ntfy</strong> aufs Handy laden (App Store bzw. Google Play).</li>
+    <li>In der App auf „+“ tippen und das Thema unten exakt eintragen (am einfachsten über „Kopieren“).</li>
+    <li>Hier „Speichern“ und dann „Test senden“ &ndash; die Testnachricht sollte nach wenigen Sekunden ankommen.</li>
+  </ol>
+  <div class="field" style="margin-bottom:8px;">
+    <label for="ntfyTopic">Thema (Topic)</label>
+    <input type="text" id="ntfyTopic" autocomplete="off" spellcheck="false">
+  </div>
+  <div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:14px;">
+    <button type="button" id="ntfyCopyTopicBtn" class="secondary btn-sm">Kopieren</button>
+    <button type="button" id="ntfyNewTopicBtn" class="secondary btn-sm">Neues Thema erzeugen</button>
+  </div>
+  <div class="field" style="margin-bottom:4px;">
+    <label for="ntfyServer">Server</label>
+    <input type="text" id="ntfyServer" placeholder="https://ntfy.sh" spellcheck="false">
+  </div>
+  <p class="small" style="margin:8px 0 0;">
+    Datenschutz: Themen auf ntfy.sh sind nicht passwortgeschützt &ndash; wer den Namen kennt, kann die
+    Nachrichten (Objektname, Uhrzeit, Standortname) mitlesen. Deshalb ist er zufällig erzeugt; bitte nicht
+    weitergeben. Die Einstellungen bleiben nur in diesem Browser.
+  </p>
+  <div class="modal-actions">
+    <button type="button" id="ntfyTestBtn" class="secondary">Test senden</button>
+    <button type="button" id="notifySettingsCancelBtn" class="secondary">Abbrechen</button>
+    <button type="button" id="notifySettingsSaveBtn">Speichern</button>
   </div>
 </dialog>
 
@@ -3482,6 +3577,10 @@
   // ---------- Hauptberechnung ----------
   let allRows = [];
 
+  function fmtTimeBerlin(jd){
+    return dateFromJd(jd).toLocaleTimeString('de-DE', {timeZone:'Europe/Berlin', hour:'2-digit', minute:'2-digit'});
+  }
+
   function fmtBerlin(jd){
     const d = dateFromJd(jd);
     return d.toLocaleString('de-DE', {timeZone:'Europe/Berlin', day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit'});
@@ -3821,6 +3920,7 @@
           typeLabel: DSO_TYPE_LABELS[obj.type] || obj.type,
           mag: obj.mag,
           size: obj.size,
+          objName: obj.name,
           nightsObservable: observableNights.length, totalNights: daysAhead,
           tMid: bestRun.tMid,
           winStart: bestRun.winStart,
@@ -3933,11 +4033,17 @@
 
   function eventLinks(r){
     const nasaUrl = `https://exoplanetarchive.ipac.caltech.edu/overview/${encodeURIComponent(r.hostname)}`;
-    return `<a href="${nasaUrl}" target="_blank" rel="noopener">NASA&nbsp;↗</a><a href="#" class="stellarium-link" data-name="${escapeHtml(r.hostname)}" data-ra="${r.ra}" data-dec="${r.dec}" data-winstart="${r.winStart}">Stellarium&nbsp;↗</a>`;
+    // "Benachrichtigen" nur für Transits, deren Fenster noch in der Zukunft liegt und höchstens 3 Tage
+    // entfernt ist (Grenze der zeitversetzten Zustellung bei ntfy.sh).
+    const startMs = (r.winStart - 2440587.5) * 86400000;
+    const canNotify = startMs > Date.now() && startMs - Date.now() < NTFY_MAX_DELAY_MS;
+    return `<a href="${nasaUrl}" target="_blank" rel="noopener">NASA&nbsp;↗</a><a href="#" class="stellarium-link" data-name="${escapeHtml(r.hostname)}" data-ra="${r.ra}" data-dec="${r.dec}" data-winstart="${r.winStart}">Stellarium&nbsp;↗</a>`
+      + (canNotify ? `<button type="button" class="notify-link linklike" aria-label="Benachrichtigung zum Fensterbeginn für ${escapeHtml(r.pl_name)} planen">Benachrichtigen&nbsp;🔔</button>` : '');
   }
   function eventLinksDso(r){
     const wikiUrl = `https://de.wikipedia.org/wiki/Spezial:Suche?search=${encodeURIComponent(r.pl_name)}`;
-    return `<a href="${wikiUrl}" target="_blank" rel="noopener">Wikipedia&nbsp;↗</a><a href="#" class="stellarium-link" data-name="${escapeHtml(r.hostname)}" data-ra="${r.ra}" data-dec="${r.dec}" data-winstart="${r.winStart}">Stellarium&nbsp;↗</a>`;
+    return `<a href="${wikiUrl}" target="_blank" rel="noopener">Wikipedia&nbsp;↗</a><a href="#" class="stellarium-link" data-name="${escapeHtml(r.hostname)}" data-ra="${r.ra}" data-dec="${r.dec}" data-winstart="${r.winStart}">Stellarium&nbsp;↗</a>`
+      + (r.objName ? `<button type="button" class="notify-link linklike" aria-label="Benachrichtigen, wenn ${escapeHtml(r.pl_name)} heute Nacht im Sichtfenster erscheint">Benachrichtigen&nbsp;🔔</button>` : '');
   }
 
   // ---------- Gemeinsame Tabellen-Helfer (vorher dreifach fast identisch kopiert) ----------
@@ -4054,6 +4160,13 @@
   function makeRowClickHandler(getRenderedRows, onRow){
     return (e)=>{
       if(handleStellariumClick(e)) return;
+      const notifyBtn = e.target.closest('.notify-link');
+      if(notifyBtn){
+        const tr = notifyBtn.closest('tr[data-idx]');
+        const row = tr ? getRenderedRows()[parseInt(tr.dataset.idx, 10)] : null;
+        if(row) notifyFromRow(row);
+        return;
+      }
       if(e.target.closest('a')) return; // var.astro.cz / NASA / Wikipedia normal navigieren lassen
       const tr = e.target.closest('tr[data-idx]');
       if(!tr) return;
@@ -4322,6 +4435,366 @@
     updateSortIndicators('resultsTableNow', nowSort);
   }
 
+  // ---------- Benachrichtigung aufs Handy (Push über ntfy) ----------
+  // Ablauf: Beim Planen berechnet das Tool (wie in den Ergebnistabellen) den Zeitpunkt, an dem das
+  // Objekt in dieser Nacht ins Sichtfenster kommt, und übergibt die fertige Nachricht SOFORT an den
+  // Push-Dienst ntfy - mit Zustellzeitpunkt ("at"). ntfy hält sie bis dahin zurück und liefert sie dann
+  // an die ntfy-App auf dem Handy aus. Dadurch braucht es weder einen eigenen Server noch eine offene
+  // Seite. Alle Parameter gehen als URL-Parameter mit einfachem Text-Body: So bleibt die Anfrage eine
+  // "einfache" CORS-Anfrage ohne Vorab-Prüfung, und Umlaute/Emojis im Titel sind unproblematisch (in
+  // HTTP-Headern wären sie es nicht). Jede Nachricht trägt eine Kennung (Sequence-ID im Pfad); dieselbe
+  // Kennung ersetzt eine geplante Nachricht, DELETE sagt sie ab.
+  const NTFY_SERVER_KEY = 'skytracker_ntfy_server_v1';
+  const NTFY_TOPIC_KEY = 'skytracker_ntfy_topic_v1';
+  const ALERTS_KEY = 'skytracker_alerts_v1';
+  const NTFY_DEFAULT_SERVER = 'https://ntfy.sh';
+  // ntfy.sh stellt zeitversetzt höchstens 3 Tage im Voraus zu.
+  const NTFY_MAX_DELAY_MS = 3 * 24 * 3600 * 1000;
+
+  function randomTopic(){
+    const alphabet = 'abcdefghijkmnpqrstuvwxyz23456789'; // ohne leicht verwechselbare Zeichen (l, o, 0, 1)
+    const bytes = new Uint8Array(12);
+    if(window.crypto && crypto.getRandomValues) crypto.getRandomValues(bytes);
+    else for(let i=0;i<bytes.length;i++) bytes[i] = Math.floor(Math.random()*256);
+    return 'skytracker-' + Array.from(bytes, b=>alphabet[b % alphabet.length]).join('');
+  }
+  function normalizeServer(s){
+    s = String(s || '').trim().replace(/\/+$/, '');
+    if(!s) return NTFY_DEFAULT_SERVER;
+    if(!/^https?:\/\//i.test(s)) s = 'https://' + s;
+    return s;
+  }
+  function loadNtfySettings(){
+    let server = '', topic = '';
+    try{ server = localStorage.getItem(NTFY_SERVER_KEY) || ''; topic = localStorage.getItem(NTFY_TOPIC_KEY) || ''; }catch(e){}
+    return { server: normalizeServer(server), topic: topic.trim() };
+  }
+  function saveNtfySettings(server, topic){
+    try{
+      localStorage.setItem(NTFY_SERVER_KEY, normalizeServer(server));
+      localStorage.setItem(NTFY_TOPIC_KEY, topic.trim());
+    }catch(e){ showToast('Hinweis: Push-Einstellungen konnten nicht gespeichert werden (Browser-Speicher nicht verfügbar).'); }
+  }
+  function loadAlerts(){
+    try{ const a = JSON.parse(localStorage.getItem(ALERTS_KEY) || '[]'); return Array.isArray(a) ? a : []; }
+    catch(e){ return []; }
+  }
+  function saveAlerts(list){
+    try{ localStorage.setItem(ALERTS_KEY, JSON.stringify(list)); }catch(e){}
+  }
+  // ntfy-Themen und Sequence-IDs: nur Buchstaben, Ziffern, "-" und "_", max. 64 Zeichen.
+  function isValidTopic(t){ return /^[A-Za-z0-9_-]{1,64}$/.test(t); }
+  function toolUrl(){
+    return /^https?:$/.test(location.protocol) ? location.href.split('#')[0] : '';
+  }
+
+  // Übergibt eine Nachricht an ntfy. atMs = gewünschter Zustellzeitpunkt (ms); liegt er weniger als
+  // 15 s in der Zukunft, wird sofort zugestellt (ntfy verlangt mind. 10 s Verzögerung).
+  async function ntfyPublish({ title, message, atMs, seq, tags }){
+    const { server, topic } = loadNtfySettings();
+    if(!isValidTopic(topic)) throw new Error('Kein gültiges Thema eingerichtet – bitte „Push einrichten“.');
+    const params = new URLSearchParams();
+    params.set('title', title);
+    params.set('tags', tags || 'telescope');
+    params.set('priority', '4');
+    const click = toolUrl();
+    if(click) params.set('click', click);
+    if(atMs && atMs - Date.now() > 15000) params.set('at', String(Math.round(atMs / 1000)));
+    const url = `${server}/${topic}${seq ? '/' + seq : ''}?${params.toString()}`;
+    let res;
+    try{ res = await fetch(url, { method:'POST', body: message }); }
+    catch(err){ throw new Error(`${new URL(server).host} nicht erreichbar (Netzwerk, Werbeblocker oder Firewall?)`); }
+    if(!res.ok){
+      let detail = '';
+      try{ detail = (await res.text()).slice(0, 160); }catch(e){}
+      throw new Error(`Push-Dienst antwortet mit HTTP ${res.status}${detail ? ': ' + detail : ''}`);
+    }
+  }
+  async function ntfyCancel(alert){
+    const res = await fetch(`${alert.server}/${alert.topic}/${alert.seq}`, { method:'DELETE' });
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+  }
+
+  // ----- Objektsuche: Katalogname, gebräuchlicher Name oder (falls geladen) Exoplanet/Wirtsstern -----
+  function normName(s){
+    return String(s || '').toLowerCase()
+      .replace(/\(.*?\)/g, ' ')
+      .replace(/^\s*messier\s*/, 'm')
+      .replace(/[\s_\-'’.,]/g, '')
+      .replace(/^(ngc|ic)0+(?=\d)/, '$1');
+  }
+  const NOTIFY_INDEX = DSO_CATALOG.map(o => ({
+    obj: o,
+    keys: [o.name, o.catalogRef].filter(Boolean).map(normName),
+    common: normName(o.common)
+  }));
+  function resolveNotifyTarget(query){
+    const q = normName(query);
+    if(!q) return null;
+    const exact = NOTIFY_INDEX.find(e => e.keys.includes(q) || (e.common && e.common === q));
+    if(exact) return { ra: exact.obj.ra, dec: exact.obj.dec, label: exact.obj.common ? `${exact.obj.name} (${exact.obj.common})` : exact.obj.name, key: exact.obj.name };
+    if(q.length >= 4){
+      const partial = NOTIFY_INDEX.filter(e => e.common && e.common.includes(q));
+      if(partial.length === 1){
+        const o = partial[0].obj;
+        return { ra: o.ra, dec: o.dec, label: `${o.name} (${o.common})`, key: o.name };
+      }
+      if(partial.length > 1) return { ambiguous: partial.slice(0, 6).map(e => `${e.obj.name} (${e.obj.common})`) };
+    }
+    // Exoplaneten/Wirtssterne aus geladenen NASA-Daten (Position des Sterns).
+    const exo = rawData.find(r => normName(r.pl_name) === q || normName(r.hostname) === q);
+    if(exo && isFinite(parseFloat(exo.ra)) && isFinite(parseFloat(exo.dec))){
+      return { ra: parseFloat(exo.ra), dec: parseFloat(exo.dec), label: normName(exo.pl_name) === q ? exo.pl_name : exo.hostname, key: exo.hostname };
+    }
+    return null;
+  }
+
+  // ----- Wann erscheint das Objekt heute Nacht im Sichtfenster? -----
+  // Minutengenau ab jetzt bis zum Ende der laufenden (oder, wenn es gerade hell ist, der nächsten)
+  // Nacht. Gleiche Bedingungen wie in den Ergebnistabellen; ein Auftritt zählt ab 10 Minuten am Stück.
+  function findTonightAppearance(ra, dec){
+    const loc = getActiveLocation();
+    const lat = loc.lat, lon = loc.lon;
+    const horizonProfile = getHorizonRows(), ceilingProfile = getCeilingRows();
+    const twilight = parseFloat(document.getElementById('twilight').value);
+    const nowJd = jdFromDate(new Date());
+    const step = 1 / 1440;
+    let seenDark = false, darkStart = null, darkEnd = null;
+    let runStart = null, runStartIdx = -1, runMax = -999, found = null;
+    function closeRun(endJd){
+      if(runStart !== null && !found && endJd - runStart >= 10 * step){
+        found = { start: runStart, end: endJd, maxAlt: runMax, alreadyVisible: runStartIdx === 0 };
+      }
+      runStart = null; runMax = -999;
+    }
+    for(let i = 0; i <= 24 * 60; i++){
+      const jd = nowJd + i * step;
+      const dark = sunAltitude(jd, lat, lon) <= twilight;
+      if(!dark){
+        if(seenDark){ darkEnd = jd; closeRun(jd); break; }
+        continue;
+      }
+      if(!seenDark){ seenDark = true; darkStart = jd; }
+      const pos = altAz(jd, ra, dec, lat, lon);
+      let ok = azInWindow(pos.az, loc.azStart, loc.azEnd);
+      if(ok){
+        const b = bufferedElevationBounds(pos.az, horizonProfile, ceilingProfile);
+        ok = pos.alt >= b.minEl && pos.alt <= b.maxEl;
+      }
+      if(ok){
+        if(runStart === null){ runStart = jd; runStartIdx = i; }
+        if(pos.alt > runMax) runMax = pos.alt;
+      } else if(runStart !== null){
+        closeRun(jd);
+      }
+      if(found) break;
+    }
+    if(!found && runStart !== null) closeRun(nowJd + 24 * 60 * step);
+    // Ende des Fensters: Lief der gefundene Auftritt bis zum Abbruch der Suche, dort weiterlaufen lassen.
+    return { location: loc, seenDark, darkStart, darkEnd, found };
+  }
+
+  function jdToMs(jd){ return (jd - 2440587.5) * 86400000; }
+  // Kennung je Objekt und NACHT (Datum des Nachtbeginns, auch wenn das Objekt erst nach Mitternacht
+  // erscheint) - erneutes Planen in derselben Nacht ersetzt so die vorherige Nachricht.
+  function alertSeq(key, nightJd){
+    const day = dateFromJd(nightJd - 0.5).toLocaleDateString('sv-SE', {timeZone:'Europe/Berlin'}).replace(/-/g, '');
+    return ('st-' + normName(key).replace(/[^a-z0-9]/g, '') + '-' + day).slice(0, 64);
+  }
+
+  function setNotifyResult(html){
+    document.getElementById('notifyResult').innerHTML = html;
+  }
+  function readLeadMin(){
+    const v = parseFloat(document.getElementById('notifyLead').value);
+    return isFinite(v) ? Math.min(120, Math.max(0, v)) : 0;
+  }
+  function ensurePushConfigured(){
+    if(isValidTopic(loadNtfySettings().topic)) return true;
+    setNotifyResult('Bitte zuerst „Push einrichten“ – danach erneut „Benachrichtigen“ antippen.');
+    openNotifySettings();
+    return false;
+  }
+
+  // Plant eine Nachricht, merkt sie sich in der Liste und meldet das Ergebnis.
+  async function scheduleAlert({ seq, label, title, message, atMs, startMs, kind }){
+    const { server, topic } = loadNtfySettings();
+    const btn = document.getElementById('notifyBtn');
+    btn.disabled = true;
+    try{
+      await ntfyPublish({ title, message, atMs, seq });
+    } finally {
+      btn.disabled = false;
+    }
+    const loc = getActiveLocation();
+    const list = loadAlerts().filter(a => a.seq !== seq); // gleiche Kennung = ersetzt
+    list.push({ seq, label, kind, atMs: Math.max(atMs, Date.now()), startMs, location: loc ? loc.name : '', server, topic });
+    saveAlerts(list);
+    renderAlerts();
+  }
+
+  async function planNotification(){
+    const query = document.getElementById('notifyObject').value;
+    if(!query.trim()){ setNotifyResult('Bitte ein Objekt eingeben, z.&nbsp;B. „M31“.'); document.getElementById('notifyObject').focus(); return; }
+    const target = resolveNotifyTarget(query);
+    if(!target){
+      setNotifyResult(`„${escapeHtml(query)}“ wurde nicht gefunden. Bitte einen Katalognamen wie „M31“, „NGC 7000“ oder einen gebräuchlichen Namen wie „Andromeda“ eingeben (Vorschläge erscheinen beim Tippen).`);
+      return;
+    }
+    if(target.ambiguous){
+      setNotifyResult(`Mehrere Treffer – bitte genauer angeben: ${target.ambiguous.map(escapeHtml).join(', ')}.`);
+      return;
+    }
+    if(!ensurePushConfigured()) return;
+
+    const r = findTonightAppearance(target.ra, target.dec);
+    const locName = escapeHtml(r.location.name);
+    if(!r.seenDark){
+      setNotifyResult(`In den nächsten 24 Stunden wird es am Standort „${locName}“ nicht dunkel genug (Dämmerungsgrenze aus Abschnitt&nbsp;2) – keine Benachrichtigung geplant.`);
+      return;
+    }
+    const nightStr = `${fmtTimeBerlin(r.darkStart)}–${r.darkEnd ? fmtTimeBerlin(r.darkEnd) : '…'} Uhr`;
+    if(!r.found){
+      setNotifyResult(`<strong>${escapeHtml(target.label)}</strong> erscheint in dieser Nacht (dunkel ${nightStr}) nicht im Sichtfenster von „${locName}“ – keine Benachrichtigung geplant.`);
+      return;
+    }
+    const f = r.found;
+    if(f.alreadyVisible){
+      setNotifyResult(`<strong>${escapeHtml(target.label)}</strong> steht bereits jetzt im Sichtfenster von „${locName}“ – bis ${fmtTimeBerlin(f.end)} Uhr, max. ${f.maxAlt.toFixed(0)}°. Eine Benachrichtigung ist nicht nötig.`);
+      return;
+    }
+    const lead = readLeadMin();
+    const startMs = jdToMs(f.start);
+    const atMs = Math.max(Date.now(), startMs - lead * 60000);
+    const m = moonInfo(f.start, target.ra, target.dec, r.location.lat, r.location.lon);
+    const moonTxt = m.alt < 0 ? `Mond unter dem Horizont (${moonPhaseText(m).replace('&nbsp;', ' ')}).`
+      : `Mond: ${moonPhaseText(m).replace('&nbsp;', ' ')}, ${m.dist.toFixed(0)}° entfernt.`;
+    const title = lead > 0 ? `🔭 ${target.label} in ${lead} Min. im Sichtfenster` : `🔭 ${target.label} jetzt im Sichtfenster`;
+    const message = `${target.label} steht ab ${fmtTimeBerlin(f.start)} Uhr im Sichtfenster „${r.location.name}“ – `
+      + `sichtbar bis ${fmtTimeBerlin(f.end)} Uhr, max. Höhe ${f.maxAlt.toFixed(0)}°. ${moonTxt}`;
+    try{
+      await scheduleAlert({ seq: alertSeq(target.key, r.darkStart), label: target.label, title, message, atMs, startMs, kind: 'dso' });
+      setNotifyResult(`Geplant: Nachricht um <strong>${fmtTimeBerlin((atMs/86400000) + 2440587.5)} Uhr</strong> – ${escapeHtml(target.label)} steht ab ${fmtTimeBerlin(f.start)} bis ${fmtTimeBerlin(f.end)} Uhr im Sichtfenster von „${locName}“ (max. ${f.maxAlt.toFixed(0)}°).`);
+    }catch(err){
+      setNotifyResult(`Planen fehlgeschlagen: ${escapeHtml(err.message)}`);
+    }
+  }
+
+  // Aus einer Tabellenzeile: Deep-Sky -> wie Eingabe im Feld; Exoplanet -> Beginn des Transit-Fensters.
+  async function notifyFromRow(row){
+    if(row.objName){
+      document.getElementById('notifyObject').value = row.objName;
+      document.getElementById('notifyCard').scrollIntoView({behavior:scrollBehavior(), block:'center'});
+      await planNotification();
+      return;
+    }
+    if(!ensurePushConfigured()){
+      document.getElementById('notifyCard').scrollIntoView({behavior:scrollBehavior(), block:'center'});
+      return;
+    }
+    const lead = readLeadMin();
+    const startMs = jdToMs(row.winStart);
+    const atMs = Math.max(Date.now(), startMs - lead * 60000);
+    const loc = getActiveLocation();
+    const title = `🪐 Transit ${row.pl_name}: Fenster ${lead > 0 ? `in ${lead} Min.` : 'beginnt jetzt'}`;
+    const message = `Beobachtungsfenster für ${row.pl_name} (${row.hostname}) am Standort „${loc ? loc.name : ''}“: `
+      + `${fmtTimeBerlin(row.winStart)}–${fmtTimeBerlin(row.winEnd)} Uhr, Transitmitte ${fmtTimeBerlin(row.tMid)} Uhr, `
+      + `Höhe ${row.minAlt.toFixed(0)}–${row.maxAlt.toFixed(0)}°. Ephemeride vorher kurz gegenprüfen (var.astro.cz).`;
+    try{
+      await scheduleAlert({ seq: alertSeq('tr' + row.pl_name, row.winStart), label: `Transit ${row.pl_name}`, title, message, atMs, startMs, kind: 'transit' });
+      setNotifyResult(`Geplant: Nachricht am <strong>${fmtBerlin((atMs/86400000) + 2440587.5)} Uhr</strong> zum Beginn des Transit-Fensters von ${escapeHtml(row.pl_name)}.`);
+      showToast(`Benachrichtigung für den Transit von ${row.pl_name} geplant.`);
+    }catch(err){
+      setNotifyResult(`Planen fehlgeschlagen: ${escapeHtml(err.message)}`);
+      showToast('Planen fehlgeschlagen: ' + err.message);
+    }
+    document.getElementById('notifyCard').scrollIntoView({behavior:scrollBehavior(), block:'center'});
+  }
+
+  function renderAlerts(){
+    // Bereits zugestellte Nachrichten (mehr als 30 Min. vorbei) aus der Liste entfernen.
+    const list = loadAlerts().filter(a => a.atMs > Date.now() - 30 * 60000).sort((a,b)=>a.atMs - b.atMs);
+    saveAlerts(list);
+    const ul = document.getElementById('notifyList');
+    document.getElementById('notifyListWrap').style.display = list.length ? '' : 'none';
+    ul.innerHTML = list.map(a=>{
+      const atJd = a.atMs/86400000 + 2440587.5;
+      const sent = a.atMs <= Date.now();
+      return `<li><span><strong>${escapeHtml(a.label)}</strong><br><span class="small">${sent ? 'zugestellt' : 'Nachricht'} ${fmtBerlin(atJd)} Uhr · ${escapeHtml(a.location)}</span></span>`
+        + (sent ? '' : `<button type="button" class="secondary btn-sm notify-cancel" data-seq="${escapeHtml(a.seq)}" aria-label="Benachrichtigung für ${escapeHtml(a.label)} absagen">Absagen</button>`)
+        + `</li>`;
+    }).join('');
+  }
+  document.getElementById('notifyList').addEventListener('click', async (e)=>{
+    const btn = e.target.closest('.notify-cancel');
+    if(!btn) return;
+    const alert = loadAlerts().find(a => a.seq === btn.dataset.seq);
+    if(!alert) return;
+    btn.disabled = true;
+    try{
+      await ntfyCancel(alert);
+      saveAlerts(loadAlerts().filter(a => a.seq !== alert.seq));
+      renderAlerts();
+      setNotifyResult(`Benachrichtigung für ${escapeHtml(alert.label)} abgesagt.`);
+    }catch(err){
+      btn.disabled = false;
+      setNotifyResult(`Absagen fehlgeschlagen (${escapeHtml(err.message)}). Die Nachricht ist evtl. noch geplant.`);
+    }
+  });
+
+  document.getElementById('notifyBtn').addEventListener('click', ()=>planNotification());
+  document.getElementById('notifyObject').addEventListener('keydown', (e)=>{
+    if(e.key === 'Enter'){ e.preventDefault(); planNotification(); }
+  });
+  document.getElementById('notifyObjectList').innerHTML = DSO_CATALOG
+    .map(o=>`<option value="${escapeHtml(o.name)}">${escapeHtml(o.common || '')}</option>`).join('');
+
+  // ----- Push-Einstellungen (Dialog) -----
+  function openNotifySettings(){
+    const s = loadNtfySettings();
+    document.getElementById('ntfyTopic').value = s.topic || randomTopic();
+    document.getElementById('ntfyServer').value = s.server;
+    document.getElementById('notifySettingsModal').showModal();
+  }
+  function closeNotifySettings(){ document.getElementById('notifySettingsModal').close(); }
+  function saveNotifySettingsFromDialog(){
+    const topic = document.getElementById('ntfyTopic').value.trim();
+    if(!isValidTopic(topic)){
+      showToast('Das Thema darf nur Buchstaben, Ziffern, „-“ und „_“ enthalten (max. 64 Zeichen).');
+      return false;
+    }
+    saveNtfySettings(document.getElementById('ntfyServer').value, topic);
+    return true;
+  }
+  document.getElementById('notifySettingsBtn').addEventListener('click', openNotifySettings);
+  document.getElementById('notifySettingsCloseXBtn').addEventListener('click', closeNotifySettings);
+  document.getElementById('notifySettingsCancelBtn').addEventListener('click', closeNotifySettings);
+  document.getElementById('notifySettingsSaveBtn').addEventListener('click', ()=>{
+    if(saveNotifySettingsFromDialog()){ closeNotifySettings(); showToast('Push-Einstellungen gespeichert.'); }
+  });
+  document.getElementById('ntfyNewTopicBtn').addEventListener('click', ()=>{
+    document.getElementById('ntfyTopic').value = randomTopic();
+    showToast('Neues Thema erzeugt – nach dem Speichern in der ntfy-App neu abonnieren.');
+  });
+  document.getElementById('ntfyCopyTopicBtn').addEventListener('click', async ()=>{
+    const el = document.getElementById('ntfyTopic');
+    try{ await navigator.clipboard.writeText(el.value); showToast('Thema kopiert.'); }
+    catch(e){ el.select(); showToast('Kopieren nicht möglich – Thema ist markiert, bitte manuell kopieren.'); }
+  });
+  document.getElementById('ntfyTestBtn').addEventListener('click', async ()=>{
+    if(!saveNotifySettingsFromDialog()) return;
+    const btn = document.getElementById('ntfyTestBtn');
+    btn.disabled = true;
+    try{
+      await ntfyPublish({ title: '🔭 Skytracker: Test', message: 'Die Benachrichtigung funktioniert. ✓', tags: 'white_check_mark' });
+      showToast('Testnachricht gesendet – sie sollte in wenigen Sekunden in der ntfy-App erscheinen.');
+    }catch(err){
+      showToast('Test fehlgeschlagen: ' + err.message);
+    }finally{
+      btn.disabled = false;
+    }
+  });
+
   // ---------- Init ----------
   // Heutiges Datum in Berliner Ortszeit (nicht UTC): toISOString() lieferte zwischen 00:00 und
   // 01:00/02:00 Uhr Ortszeit noch das Datum des Vortags. "sv-SE" formatiert als JJJJ-MM-TT.
@@ -4333,6 +4806,7 @@
   updateSortIndicators('resultsTable', exoSort);
   updateSortIndicators('resultsTableDso', dsoSort);
   updateSortIndicators('resultsTableNow', nowSort);
+  renderAlerts();
   // Nicht blockierend (async, kein await hier) und bewusst still bei jedem Fehler/fehlender Datei -
   // siehe Kommentar bei loadLocationsFromGithub() weiter oben.
   loadLocationsFromGithub(false);
