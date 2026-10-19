@@ -317,10 +317,10 @@
 
     <div>
       <div class="card">
-        <h2>2. Zeitraum &amp; Dunkelheit</h2>
+        <h2 id="zeitraumHeading">2. Zeitraum &amp; Dunkelheit</h2>
         <div class="field-row">
-          <div class="field"><label for="startDate">Start-Datum</label><input type="date" id="startDate"></div>
-          <div class="field"><label for="daysAhead">Anzahl Nächte</label><input type="number" id="daysAhead" value="30" min="1" max="365"></div>
+          <div class="field" id="startDateField"><label for="startDate">Start-Datum</label><input type="date" id="startDate"></div>
+          <div class="field" id="daysAheadField"><label for="daysAhead">Anzahl Nächte</label><input type="number" id="daysAhead" value="30" min="1" max="365"></div>
           <div class="field">
             <label for="twilight">Dämmerungsgrenze</label>
             <select id="twilight">
@@ -688,7 +688,9 @@
     Angezeigt werden alle Objekte, die das für mindestens die eingestellte Dauer (Standard 2&nbsp;Stunden)
     schaffen &ndash; bewusst ohne die Helligkeits-/Größen-/Kategorie-Filter des Deep-Sky-Modus. Ist es
     gerade noch nicht dunkel genug, bleibt die Liste leer (mit entsprechendem Hinweis in der
-    Zusammenfassung). Start-Datum und Anzahl Nächte aus Abschnitt&nbsp;2 spielen hier keine Rolle.
+    Zusammenfassung). Start-Datum und Anzahl Nächte werden in diesem Modus ausgeblendet, da aktuelle
+    Uhrzeit und aktueller Tag den Zeitraum festlegen; Abschnitt&nbsp;2 heißt dann nur „Dunkelheit“ und
+    enthält nur noch die Dämmerungsgrenze.
     Die Ergebnisse gelten für den Moment der Berechnung &ndash; bei längerer Nutzung „Aktualisieren“
     erneut anklicken. Ein Klick auf eine Zeile zeigt die verbleibende Bahn (ab jetzt) im Polardiagramm.
   </p>
@@ -1043,6 +1045,11 @@
     document.getElementById('modeNowBtn').classList.toggle('secondary', mode !== 'now');
     document.getElementById('zielNowCard').style.display = mode === 'now' ? '' : 'none';
     document.getElementById('resultsCardNow').style.display = mode === 'now' ? '' : 'none';
+    // Im "Jetzt"-Modus legen aktuelle Uhrzeit und aktueller Tag den Zeitraum fest - Start-Datum und
+    // Anzahl Nächte spielen dort keine Rolle und werden ausgeblendet; nur die Dämmerungsgrenze bleibt.
+    document.getElementById('startDateField').style.display = mode === 'now' ? 'none' : '';
+    document.getElementById('daysAheadField').style.display = mode === 'now' ? 'none' : '';
+    document.getElementById('zeitraumHeading').textContent = mode === 'now' ? '2. Dunkelheit' : '2. Zeitraum & Dunkelheit';
     document.getElementById('zielExoCard').style.display = mode === 'exo' ? '' : 'none';
     document.getElementById('zielDsoCard').style.display = mode === 'dso' ? '' : 'none';
     document.getElementById('resultsCardExo').style.display = mode === 'exo' ? '' : 'none';
