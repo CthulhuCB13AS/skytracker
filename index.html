@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Skytracker_BP17 – Version V2.23 -->
+<!-- Skytracker_BP17 – Version V2.24 -->
 <html lang="de">
 <head>
 <meta charset="UTF-8">
@@ -69,6 +69,18 @@
   header a.secondary{
     background:var(--panel2); color:var(--text); border:1px solid var(--border); border-radius:8px;
     padding:10px 18px; font-size:0.92rem; font-weight:600; text-decoration:none; display:inline-block;
+  }
+  /* Modus-Umschalter (Exoplaneten / Deep-Sky / Jetzt): bleibt immer in EINER Zeile - am Handy
+     teilen sich die drei Buttons die Breite gleichmäßig, "Deep-Sky-Objekte" wird dort zu "Deep-Sky"
+     verkürzt, damit kein Umbruch nötig ist. */
+  .mode-toolbar{ flex-wrap:nowrap; }
+  .mode-toolbar button{ white-space:nowrap; }
+  .mode-toolbar .lbl-short{ display:none; }
+  @media (max-width:600px){
+    .mode-toolbar{ gap:6px; }
+    .mode-toolbar button{ flex:1 1 0; min-width:0; padding:9px 6px; font-size:0.85rem; overflow:hidden; text-overflow:ellipsis; }
+    .mode-toolbar .lbl-long{ display:none; }
+    .mode-toolbar .lbl-short{ display:inline; }
   }
   #status{ font-size:0.85rem; color:var(--muted); margin-top:10px; min-height:1.2em; }
   #fallback{ display:none; margin-top:14px; padding:14px; background:var(--panel2); border-radius:8px; border:1px dashed var(--border); font-size:0.85rem; }
@@ -248,9 +260,10 @@
 
 <main id="plannerView">
 
-  <div class="toolbar" style="margin-bottom:18px;">
+  <div class="toolbar mode-toolbar" style="margin-bottom:18px;">
     <button type="button" id="modeExoBtn">Exoplaneten</button>
-    <button type="button" id="modeDsoBtn" class="secondary">Deep-Sky-Objekte</button>
+    <button type="button" id="modeDsoBtn" class="secondary"><span class="lbl-long">Deep-Sky-Objekte</span><span class="lbl-short">Deep-Sky</span></button>
+    <button type="button" id="modeNowBtn" class="secondary">Jetzt</button>
   </div>
 
   <div class="grid">
@@ -365,6 +378,15 @@
         <p class="small" style="margin-top:8px;">Eingebetteter Katalog: 563 Objekte (Messier + NGC/IC heller als 10&nbsp;mag), Quelle OpenNGC &ndash; siehe Doku.</p>
       </div>
 
+      <div class="card" id="zielNowCard" style="display:none;">
+        <h2>3. Jetzt sichtbar</h2>
+        <div class="field-row">
+          <div class="field"><label for="nowMinHours">Mindestens noch sichtbar (Std.)</label><input type="number" id="nowMinHours" value="2" step="0.5" min="0.5"></div>
+        </div>
+        <button type="button" id="computeNowBtn">Aktualisieren</button>
+        <p class="small" style="margin-top:8px;">Zeigt alle Objekte des eingebetteten Deep-Sky-Katalogs (563 Objekte, ohne Helligkeits-/Größen-/Kategorie-Filter), die ab <em>jetzt</em> durchgehend für mindestens die angegebene Dauer im Sichtfenster des gewählten Standorts und am dunklen Himmel (Dämmerungsgrenze aus Abschnitt&nbsp;2) stehen.</p>
+      </div>
+
       <div class="card">
         <h2>Zusammenfassung</h2>
         <div id="summary" class="small">Noch keine Daten geladen.</div>
@@ -425,6 +447,31 @@
     </div>
   </div>
 
+  <div class="card" id="resultsCardNow" style="display:none;">
+    <h2>Jetzt sichtbare Objekte</h2>
+    <div class="toolbar">
+      <input type="text" id="searchBoxNow" placeholder="Objekt suchen&hellip;">
+      <span class="count-pill" id="rowCountNow">0 Ergebnisse</span>
+    </div>
+    <div class="tablewrap">
+      <table id="resultsTableNow">
+        <thead>
+          <tr>
+            <th data-key="name" title="Katalogname (Messier-Nummer bevorzugt) und, falls bekannt, gebräuchlicher Name">Objekt</th>
+            <th data-key="typeLabel" title="Objekttyp">Typ</th>
+            <th data-key="constellation" title="Sternbild laut Katalog">Sternbild</th>
+            <th data-key="mag" title="Scheinbare Helligkeit – je kleiner, desto heller">Helligkeit</th>
+            <th data-key="size" title="Scheinbare Größe (längste Achse) in Bogenminuten">Größe</th>
+            <th data-key="curAlt" title="Aktuelle Höhe und Azimut des Objekts">Jetzt (Höhe/Az.)</th>
+            <th data-key="remaining" title="Zeitpunkt, bis zu dem das Objekt ununterbrochen im Sichtfenster und am dunklen Himmel bleibt, und die verbleibende Dauer">Sichtbar bis</th>
+            <th title="Externe Links: Wikipedia und Stellarium-Fokus (siehe Doku)">Links</th>
+          </tr>
+        </thead>
+        <tbody id="resultsBodyNow"></tbody>
+      </table>
+    </div>
+  </div>
+
   <div class="card" id="resultsCardDsoNights" style="display:none;">
     <h2>Nächte für <span id="dsoNightsTitle"></span></h2>
     <div class="toolbar">
@@ -451,7 +498,7 @@
 <div class="docview" id="docView" style="display:none;">
   <button type="button" id="backToPlannerBtn" style="margin:20px 0 10px;">&larr; Zurück zum Planer</button>
 
-  <p class="small">Version: V2.23</p>
+  <p class="small">Version: V2.24</p>
   <h2>Überblick</h2>
   <p>
     Dieses Tool findet Himmelsobjekte, die mit einem Linsenteleskop (432&nbsp;mm Brennweite, 72&nbsp;mm
@@ -460,8 +507,10 @@
     Standort/Sichtfenster und Zeitraum/Dunkelheit gemeinsam: <strong>Exoplaneten</strong> sucht Transits
     (Datenquelle NASA Exoplanet Archive, inkl. maximaler Belichtungsdauer) mit Links zu var.astro.cz und der
     NASA-Systemübersicht; <strong>Deep-Sky-Objekte</strong> sucht Nächte, in denen Galaxien, Sternhaufen oder
-    Nebel aus einem eingebetteten Katalog (Messier + helle NGC/IC, Quelle OpenNGC) im Sichtfenster stehen.
-    Beide Modi verlinken zusätzlich optional auf Stellarium.
+    Nebel aus einem eingebetteten Katalog (Messier + helle NGC/IC, Quelle OpenNGC) im Sichtfenster stehen;
+    <strong>Jetzt</strong> zeigt alle Objekte desselben Katalogs, die ab dem aktuellen Zeitpunkt noch
+    mindestens zwei Stunden (einstellbar) durchgehend vom gewählten Standort aus beobachtbar sind.
+    Alle Modi verlinken zusätzlich optional auf Stellarium.
   </p>
 
   <h2>1. Standort &amp; Sichtfenster</h2>
@@ -628,6 +677,20 @@
     beschränkt auf die 107 im Katalog enthaltenen Messier-Objekte. Der Katalog ist fest eingebettet, daher
     gibt es hier &ndash; anders als bei den Exoplaneten &ndash; keinen „Daten laden“-Schritt; der Knopf
     „Deep-Sky-Objekte berechnen“ reicht.
+  </p>
+
+  <h3>Jetzt</h3>
+  <p>
+    Für spontane Beobachtungen: Beim Wechsel in diesen Modus (und bei „Aktualisieren“) prüft das Tool
+    für jedes der 563 Katalogobjekte in 5-Minuten-Schritten ab dem aktuellen Zeitpunkt, wie lange es
+    <em>ununterbrochen</em> gleichzeitig im Sichtfenster des aktiven Standorts (Azimut-Grenzen, untere/obere
+    Grenze inkl. Sicherheitspuffer) und am dunklen Himmel (Dämmerungsgrenze aus Abschnitt&nbsp;2) bleibt.
+    Angezeigt werden alle Objekte, die das für mindestens die eingestellte Dauer (Standard 2&nbsp;Stunden)
+    schaffen &ndash; bewusst ohne die Helligkeits-/Größen-/Kategorie-Filter des Deep-Sky-Modus. Ist es
+    gerade noch nicht dunkel genug, bleibt die Liste leer (mit entsprechendem Hinweis in der
+    Zusammenfassung). Start-Datum und Anzahl Nächte aus Abschnitt&nbsp;2 spielen hier keine Rolle.
+    Die Ergebnisse gelten für den Moment der Berechnung &ndash; bei längerer Nutzung „Aktualisieren“
+    erneut anklicken. Ein Klick auf eine Zeile zeigt die verbleibende Bahn (ab jetzt) im Polardiagramm.
   </p>
 
   <h2>Datenquelle &amp; Laden</h2>
@@ -961,10 +1024,12 @@
   let dsoNightsViewOpen = false;
   function activeTbodyId(){
     if(currentMode === 'exo') return 'resultsBody';
+    if(currentMode === 'now') return 'resultsBodyNow';
     return dsoNightsViewOpen ? 'resultsBodyDsoNights' : 'resultsBodyDso';
   }
   function activeRenderedRows(){
     if(currentMode === 'exo') return currentRenderedRows;
+    if(currentMode === 'now') return currentRenderedRowsNow;
     return dsoNightsViewOpen ? currentRenderedRowsDsoNights : currentRenderedRowsDso;
   }
 
@@ -975,14 +1040,21 @@
     currentMode = mode;
     document.getElementById('modeExoBtn').classList.toggle('secondary', mode !== 'exo');
     document.getElementById('modeDsoBtn').classList.toggle('secondary', mode !== 'dso');
+    document.getElementById('modeNowBtn').classList.toggle('secondary', mode !== 'now');
+    document.getElementById('zielNowCard').style.display = mode === 'now' ? '' : 'none';
+    document.getElementById('resultsCardNow').style.display = mode === 'now' ? '' : 'none';
     document.getElementById('zielExoCard').style.display = mode === 'exo' ? '' : 'none';
     document.getElementById('zielDsoCard').style.display = mode === 'dso' ? '' : 'none';
     document.getElementById('resultsCardExo').style.display = mode === 'exo' ? '' : 'none';
     document.getElementById('resultsCardDso').style.display = mode === 'dso' ? '' : 'none';
     setHighlight(null);
+    // "Jetzt" berechnet beim Umschalten sofort neu - die Ergebnisse hängen am aktuellen Zeitpunkt
+    // und wären sonst (bei erneutem Wechsel in diesen Modus) veraltet.
+    if(mode === 'now') computeNow();
   }
   document.getElementById('modeExoBtn').addEventListener('click', ()=>setMode('exo'));
   document.getElementById('modeDsoBtn').addEventListener('click', ()=>setMode('dso'));
+  document.getElementById('modeNowBtn').addEventListener('click', ()=>setMode('now'));
 
   function escapeHtml(s){
     return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -1973,6 +2045,10 @@
     document.getElementById('resultsBodyDso').innerHTML = '';
     document.getElementById('rowCountDso').textContent = '0 Ergebnisse';
     lastDsoComputeParams = null;
+    allRowsNow = [];
+    currentRenderedRowsNow = [];
+    document.getElementById('resultsBodyNow').innerHTML = '';
+    document.getElementById('rowCountNow').textContent = '0 Ergebnisse';
     closeDsoNightsView();
     document.getElementById('summary').innerHTML = 'Standort geändert – bitte Daten neu laden bzw. neu berechnen.';
   }
@@ -1995,6 +2071,7 @@
     setHighlight(null);
     clearResults();
     drawCompass();
+    if(currentMode === 'now') computeNow();
   }
 
   // ---------- Standort-Modal: Anlegen/Bearbeiten (Name, Koordinaten, Azimut, Stützpunkte) ----------
@@ -3685,6 +3762,153 @@
       document.getElementById('compassSvg').scrollIntoView({behavior:'smooth', block:'center'});
     }
   });
+
+  // ---------- "Jetzt": ab dem aktuellen Zeitpunkt noch mindestens X Stunden sichtbare Objekte ----------
+  // Gleiche Geometrie/Dunkelheits-Logik wie bei den Deep-Sky-Objekten (Azimut-Grenzen, untere/obere
+  // Grenze inkl. Sicherheitspuffer, Dämmerungsgrenze), aber statt "pro Nacht im Zeitraum" nur EIN
+  // Fenster ab genau jetzt: in 5-Minuten-Schritten vorwärts, bis das Objekt das Sichtfenster verlässt
+  // oder die Dämmerung einsetzt. Objekte, die das mindestens nowMinHours lang ununterbrochen schaffen,
+  // erscheinen in der Liste. Bewusst über den GESAMTEN Katalog (ohne DSO-Filter), da "alle Objekte"
+  // gewünscht sind. Max. 14 h Vorschau reicht für jede Nacht in Mitteleuropa.
+  let allRowsNow = [];
+  let currentRenderedRowsNow = [];
+  const NOW_LOOKAHEAD_H = 14;
+  const NOW_STEP_MIN = 5;
+
+  function computeNow(){
+    const lat = parseFloat(document.getElementById('lat').value);
+    const lon = parseFloat(document.getElementById('lon').value);
+    const azStart = parseFloat(document.getElementById('azStart').value);
+    const azEnd = parseFloat(document.getElementById('azEnd').value);
+    const horizonProfile = getHorizonRows();
+    const ceilingProfile = getCeilingRows();
+    const twilight = parseFloat(document.getElementById('twilight').value);
+    const minH = Math.max(0.5, parseFloat(document.getElementById('nowMinHours').value) || 2);
+    // Grobe Vorab-Aussortierung: Objekte, deren maximal mögliche Höhe selbst unter der niedrigsten
+    // (gepufferten) Mindesthöhe liegt, können nie im Fenster stehen.
+    const lowestPossibleMinEl = horizonProfile.length ? Math.min(...horizonProfile.map(p=>p.minEl)) - SAFETY_MARGIN_DEG : 90;
+
+    const nowJd = jdFromDate(new Date());
+    const maxSteps = Math.round(NOW_LOOKAHEAD_H * 60 / NOW_STEP_MIN);
+    setHighlight(null);
+
+    // Dunkelheit hängt nicht vom Objekt ab -> einmal vorab für alle Zeitschritte berechnen.
+    const darkOk = [];
+    for(let s=0; s<=maxSteps; s++){
+      darkOk.push(sunAltitude(nowJd + s*NOW_STEP_MIN/1440, lat, lon) <= twilight);
+    }
+
+    const results = [];
+    if(darkOk[0]){
+      for(const obj of DSO_CATALOG){
+        const maxPossibleAlt = 90 - Math.abs(lat - obj.dec);
+        if(maxPossibleAlt < lowestPossibleMinEl) continue;
+        const path = [];
+        let maxAlt = -999;
+        for(let s=0; s<=maxSteps; s++){
+          if(!darkOk[s]) break;
+          const jd = nowJd + s*NOW_STEP_MIN/1440;
+          const pos = altAz(jd, obj.ra, obj.dec, lat, lon);
+          const inAzWindow = pos.az >= azStart && pos.az <= azEnd;
+          if(!inAzWindow) break;
+          const b = bufferedElevationBounds(pos.az, horizonProfile, ceilingProfile);
+          if(pos.alt < b.minEl || pos.alt > b.maxEl) break;
+          if(pos.alt > maxAlt) maxAlt = pos.alt;
+          path.push({ az: pos.az, alt: pos.alt, jd });
+        }
+        if(!path.length) continue;
+        const remainingMin = (path.length - 1) * NOW_STEP_MIN;
+        if(remainingMin < minH * 60) continue;
+        const displayName = obj.common ? `${obj.name} (${obj.common})` : obj.name;
+        results.push({
+          pl_name: displayName,
+          hostname: obj.catalogRef || obj.name,
+          ra: obj.ra, dec: obj.dec,
+          constellation: constellationFullName(obj.constAbbr),
+          type: obj.type,
+          typeLabel: DSO_TYPE_LABELS[obj.type] || obj.type,
+          mag: obj.mag, size: obj.size,
+          curAlt: path[0].alt, curAz: path[0].az,
+          maxAlt,
+          tMid: nowJd,
+          winStart: nowJd,
+          winEnd: path[path.length-1].jd,
+          remainingMin,
+          // Läuft das Fenster bis ans Ende der Vorschau, ist das Ende nur eine Untergrenze.
+          openEnded: path.length === maxSteps + 1,
+          path,
+          messier: obj.messier
+        });
+      }
+    }
+    allRowsNow = results;
+    renderTableNow();
+    renderSummaryNow(results, lat, lon, darkOk[0], minH, nowJd);
+  }
+
+  function renderSummaryNow(results, lat, lon, isDark, minH, nowJd){
+    const minHStr = String(minH).replace('.', ',');
+    if(!isDark){
+      document.getElementById('summary').innerHTML =
+        `Stand ${fmtBerlin(nowJd)}: Es ist gerade <strong>noch nicht dunkel genug</strong> ` +
+        `(Sonne über der gewählten Dämmerungsgrenze) – daher ist aktuell kein Objekt beobachtbar. ` +
+        `Später erneut „Aktualisieren“ anklicken. Standort: ${lat.toFixed(4)}°N, ${lon.toFixed(4)}°O.`;
+      return;
+    }
+    const messierCount = results.filter(r=>r.messier).length;
+    document.getElementById('summary').innerHTML =
+      `Stand ${fmtBerlin(nowJd)}: ${DSO_CATALOG.length} Deep-Sky-Objekte geprüft. ` +
+      `<strong>${results.length}</strong> davon sind jetzt sichtbar und bleiben es noch mindestens ` +
+      `${minHStr}&nbsp;h (davon <strong>${messierCount}</strong> Messier-Objekte). ` +
+      `Standort: ${lat.toFixed(4)}°N, ${lon.toFixed(4)}°O.`;
+  }
+
+  let sortKeyNow = 'remaining', sortAscNow = false;
+  document.querySelectorAll('#resultsTableNow thead th[data-key]').forEach(th=>{
+    th.addEventListener('click', ()=>{
+      const key = th.getAttribute('data-key');
+      if(sortKeyNow === key) sortAscNow = !sortAscNow; else { sortKeyNow = key; sortAscNow = true; }
+      renderTableNow();
+    });
+  });
+  document.getElementById('searchBoxNow').addEventListener('input', renderTableNow);
+  document.getElementById('computeNowBtn').addEventListener('click', computeNow);
+  document.getElementById('resultsBodyNow').addEventListener('click', makeRowClickHandler(()=>currentRenderedRowsNow));
+
+  function renderTableNow(){
+    const q = document.getElementById('searchBoxNow').value.trim().toLowerCase();
+    let rows = allRowsNow.filter(r => !q || r.pl_name.toLowerCase().includes(q));
+    const keyFn = {
+      name: r=>r.pl_name,
+      typeLabel: r=>r.typeLabel,
+      constellation: r=>r.constellation,
+      mag: r=>r.mag===null?999:r.mag,
+      size: r=>r.size===null?-1:r.size,
+      curAlt: r=>r.curAlt,
+      remaining: r=>r.remainingMin
+    }[sortKeyNow] || (r=>r.remainingMin);
+    rows = rows.slice().sort((a,b)=>{
+      const va=keyFn(a), vb=keyFn(b);
+      if(va<vb) return sortAscNow?-1:1;
+      if(va>vb) return sortAscNow?1:-1;
+      return 0;
+    });
+    currentRenderedRowsNow = rows;
+    const tbody = document.getElementById('resultsBodyNow');
+    tbody.innerHTML = rows.map((r,idx)=>`
+      <tr data-idx="${idx}" class="${r===highlightedRow?'row-highlighted':''}">
+        <td><strong>${escapeHtml(r.pl_name)}</strong></td>
+        <td>${escapeHtml(r.typeLabel)}</td>
+        <td>${escapeHtml(r.constellation)}</td>
+        <td>${r.mag===null?'&ndash;':r.mag.toFixed(1)}</td>
+        <td>${r.size===null?'&ndash;':r.size.toFixed(1)+"'"}</td>
+        <td>${r.curAlt.toFixed(0)}&deg; / ${r.curAz.toFixed(0)}&deg;<br><span class="small">max. ${r.maxAlt.toFixed(0)}&deg;</span></td>
+        <td>${r.openEnded?'nach ':''}${fmtBerlin(r.winEnd)}<br><span class="small">${r.openEnded?'über ':'noch '}${fmtDurationMin(r.remainingMin)}</span></td>
+        <td class="links">${eventLinksDso(r)}</td>
+      </tr>
+    `).join('');
+    document.getElementById('rowCountNow').textContent = rows.length + ' Ergebnisse';
+  }
 
   // ---------- Init ----------
   document.getElementById('startDate').value = new Date().toISOString().slice(0,10);
