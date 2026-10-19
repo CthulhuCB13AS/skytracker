@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Skytracker_BP17 – Version V2.30 -->
+<!-- Skytracker_BP17 – Version V2.31 -->
 <html lang="de">
 <head>
 <meta charset="UTF-8">
@@ -437,8 +437,10 @@
         <div id="status" role="status" aria-live="polite"></div>
         <div id="fallback">
           <strong>Laden über den Proxy-Worker fehlgeschlagen.</strong><br>
-          Die Fehlermeldung oben grenzt die Ursache meist ein: „HTTP-Status 404“ = Worker-Adresse falsch
-          eingetragen, „HTTP-Status 5xx“ = NASA-Dienst gerade gestört (später erneut versuchen),
+          Am schnellsten hilft „Proxy-Worker einrichten“ &rarr; „Verbindung testen“: Der Test erkennt, ob unter
+          der Adresse überhaupt der Proxy-Worker läuft (häufige Verwechslung: die Adresse des
+          GitHub-Sync-Workers). Ansonsten grenzt die Fehlermeldung oben die Ursache ein: „HTTP-Status 404“ =
+          Worker-Adresse falsch eingetragen, „HTTP-Status 5xx“ = NASA-Dienst gerade gestört (später erneut versuchen),
           „Zeitüberschreitung“ = NASA-Dienst langsam oder Netzwerk/Firewall, „Failed to fetch“ = der Browser
           blockiert die Anfrage, oft durch Werbeblocker/Tracking-Schutz oder DNS-Filter (Pi-hole, NextDNS,
           Firmen-Firewall) &ndash; dann Ihre <code>workers.dev</code>-Adresse dort freigeben. Die genaue
@@ -615,7 +617,7 @@
 <section class="docview" id="docView" aria-label="Dokumentation" style="display:none;">
   <button type="button" id="backToPlannerBtn" style="margin:20px 0 10px;">&larr; Zurück zum Planer</button>
 
-  <p class="small">Version: V2.30</p>
+  <p class="small">Version: V2.31</p>
   <h2>Überblick</h2>
   <p>
     Dieses Tool findet Himmelsobjekte, die mit einem Linsenteleskop (432&nbsp;mm Brennweite, 72&nbsp;mm
@@ -866,10 +868,13 @@
     (Tabelle <code>pscomppars</code> via TAP-Dienst). Der direkte Abruf scheitert im Browser praktisch immer
     am fehlenden CORS-Header dieses NASA-Diensts (kein Fehler des eigenen Rechners/Netzwerks, sondern
     Standardverhalten von <code>fetch()</code> bei fremden Ursprüngen ohne <code>Access-Control-Allow-Origin</code>).
-    Das Tool lädt die Daten deshalb ausschließlich über einen <strong>eigenen Proxy-Worker</strong>: Datei
+    Das Tool lädt die Daten deshalb ausschließlich über einen <strong>eigenen Proxy-Worker</strong> &ndash; ein
+    eigener Worker, nicht derselbe wie der GitHub-Sync-Worker: Datei
     <code>exoplanet-proxy-worker.js</code> gemäß der darin enthaltenen Anleitung einmalig auf
     <a href="https://dash.cloudflare.com/" target="_blank" rel="noopener">dash.cloudflare.com</a> deployen (kostenlos)
-    und die resultierende <code>workers.dev</code>-Adresse unter „Proxy-Worker einrichten“ eintragen. Öffentliche
+    und die resultierende <code>workers.dev</code>-Adresse unter „Proxy-Worker einrichten“ eintragen; „Verbindung
+    testen“ prüft dort, ob unter der Adresse wirklich der Proxy-Worker antwortet, und erkennt die häufige
+    Verwechslung mit dem Sync-Worker. Der Worker hält die NASA-Antwort 6&nbsp;Stunden im Cloudflare-Cache. Öffentliche
     Gratis-CORS-Proxys (früher <code>allorigins.win</code>, <code>codetabs.com</code>) und der direkte Abruf wurden
     in V2.29 entfernt: Sie waren unzuverlässig, teils abgeschaltet oder kostenpflichtig, und der direkte Abruf
     scheiterte ohnehin praktisch immer. Für den Notfall bleibt der manuelle Weg (CSV im Browser öffnen, speichern,
@@ -1087,19 +1092,28 @@
     <h2 id="exoWorkerSettingsTitle">Proxy-Worker einrichten</h2>
     <button type="button" id="exoWorkerSettingsCloseXBtn" class="secondary btn-close" aria-label="Schließen" title="Schließen (wie Abbrechen)">&times;</button>
   </div>
-  <p class="small" style="margin:0 0 14px;">
+  <p class="small" style="margin:0 0 10px;">
     Der Browser darf die NASA-Exoplaneten-Daten nicht direkt abrufen (der NASA-Dienst sendet keinen
-    CORS-Header). Die Daten laden deshalb ausschließlich über einen eigenen Cloudflare Worker (kostenlos,
-    eigener Account), der nur diese eine feste NASA-Abfrage mit CORS-Header ausliefert. Einrichtung: Datei <code>exoplanet-proxy-worker.js</code> öffnen, Anleitung im
-    Kopf-Kommentar befolgen (kurz: Code bei <a href="https://dash.cloudflare.com/" target="_blank">dash.cloudflare.com</a>
-    &rarr; Workers &amp; Pages &rarr; "Create Worker" einfügen und deployen), dann hier die angezeigte
-    <code>workers.dev</code>-Adresse eintragen.
+    CORS-Header). Die Daten laden deshalb über einen eigenen, kostenlosen Cloudflare Worker, der nur diese
+    eine feste NASA-Abfrage weitergibt. <strong>Das ist ein eigener Worker &ndash; nicht der GitHub-Sync-Worker.</strong>
   </p>
+  <details class="small" style="margin:0 0 14px;">
+    <summary style="cursor:pointer; color:var(--accent);">Anleitung: Worker in 5 Minuten einrichten</summary>
+    <ol style="margin:8px 0 0; padding-left:18px; display:flex; flex-direction:column; gap:4px;">
+      <li><a href="https://dash.cloudflare.com/" target="_blank" rel="noopener">dash.cloudflare.com</a> &rarr; „Workers &amp; Pages“ &rarr; „Create“ &rarr; „Start with Hello World!“.</li>
+      <li>Name z.&nbsp;B. <code>exoplanet-proxy</code> &rarr; „Deploy“.</li>
+      <li>„Edit code“ &rarr; alles löschen &rarr; den kompletten Inhalt von <code>exoplanet-proxy-worker.js</code> einfügen &rarr; „Deploy“.</li>
+      <li>Die oben auf der Übersichtsseite angezeigte Adresse (<code>https://exoplanet-proxy.…workers.dev</code>) hier eintragen.</li>
+      <li>„Verbindung testen“ &rarr; bei „Verbindung OK“ speichern und „Daten laden“.</li>
+    </ol>
+  </details>
   <div class="field" style="margin-bottom:4px;">
     <label for="exoWorkerUrl">Worker-URL</label>
-    <input type="text" id="exoWorkerUrl" placeholder="https://exoplanet-proxy.DEIN-SUBDOMAIN.workers.dev">
+    <input type="text" id="exoWorkerUrl" placeholder="https://exoplanet-proxy.DEIN-NAME.workers.dev" spellcheck="false" autocomplete="off">
   </div>
+  <p id="exoWorkerTestResult" class="small" role="status" aria-live="polite" style="margin:8px 0 0;"></p>
   <div class="modal-actions">
+    <button type="button" id="exoWorkerTestBtn" class="secondary">Verbindung testen</button>
     <button type="button" id="exoWorkerSettingsCancelBtn" class="secondary">Abbrechen</button>
     <button type="button" id="exoWorkerSettingsSaveBtn">Speichern</button>
   </div>
@@ -2162,7 +2176,12 @@
       timer = setTimeout(() => reject(new Error('Zeitüberschreitung nach ' + (ms/1000) + 's')), ms);
     });
     const fetchPromise = fetch(url).then(async resp => {
-      if(!resp.ok) throw new Error('HTTP-Status ' + resp.status);
+      if(!resp.ok){
+        // Fehlermeldung des Workers mit ausgeben (der Proxy-Worker liefert {"ok":false,"error":"…"}).
+        let detail = '';
+        try{ const b = await resp.text(); try{ detail = JSON.parse(b).error || ''; }catch(e){ detail = b.slice(0, 120); } }catch(e){}
+        throw new Error('HTTP-Status ' + resp.status + (detail ? ' (' + detail + ')' : ''));
+      }
       const text = await resp.text();
       if(!text || text.trim().length < 20) throw new Error('Antwort war leer/zu kurz (' + text.length + ' Zeichen)');
       return text;
@@ -2175,7 +2194,12 @@
   // Lädt die NASA-Daten ausschließlich über den eigenen Proxy-Worker (siehe exoplanet-proxy-worker.js).
   async function loadData(){
     fallbackEl.style.display = 'none';
-    const workerUrl = loadExoWorkerUrl();
+    const workerUrl = cleanExoWorkerUrl(loadExoWorkerUrl());
+    if(workerUrl && isSyncWorkerUrl(workerUrl)){
+      statusEl.textContent = 'Laden nicht möglich: ' + SYNC_WORKER_MIXUP;
+      openExoWorkerSettingsModal();
+      return;
+    }
     if(!workerUrl){
       statusEl.textContent = 'Kein Proxy-Worker eingetragen – bitte zuerst „Proxy-Worker einrichten“.';
       openExoWorkerSettingsModal();
@@ -2193,7 +2217,11 @@
       recomputeBtn.disabled = false;
       compute();
     }catch(err){
-      statusEl.textContent = 'Laden fehlgeschlagen: ' + ((err && err.message) ? err.message : String(err));
+      const msg = (err && err.message) ? err.message : String(err);
+      let hint = '';
+      if(/Nur POST erlaubt|HTTP-Status 405/.test(msg)) hint = ' – unter dieser Adresse läuft vermutlich der GitHub-Sync-Worker, nicht der Proxy-Worker.';
+      else if(/fetch|Load failed|NetworkError|network/i.test(msg)) hint = ' – keine lesbare Antwort vom Worker. Bitte „Proxy-Worker einrichten“ → „Verbindung testen“.';
+      statusEl.textContent = 'Laden fehlgeschlagen: ' + msg + hint;
       fallbackEl.style.display = 'block';
     }finally{
       loadBtn.disabled = false;
@@ -3143,6 +3171,7 @@
   // ---------- Eigener Proxy-Worker für den Exoplaneten-Datenabruf (Dialog) ----------
   // loadExoWorkerUrl()/saveExoWorkerUrl() sind weiter oben bei loadData() definiert.
   function openExoWorkerSettingsModal(){
+    document.getElementById('exoWorkerTestResult').textContent = '';
     document.getElementById('exoWorkerUrl').value = loadExoWorkerUrl();
     document.getElementById('exoWorkerSettingsModal').showModal();
   }
@@ -3152,8 +3181,64 @@
   document.getElementById('exoWorkerSettingsBtn').addEventListener('click', openExoWorkerSettingsModal);
   document.getElementById('exoWorkerSettingsCancelBtn').addEventListener('click', closeExoWorkerSettingsModal);
   document.getElementById('exoWorkerSettingsCloseXBtn').addEventListener('click', closeExoWorkerSettingsModal);
+  // Adresse vereinheitlichen: "https://" ergänzen, abschließende "/" und ein mit kopiertes "/status" entfernen.
+  function cleanExoWorkerUrl(s){
+    return normalizeHttpUrl(s).replace(/\/+$/, '').replace(/\/status$/i, '');
+  }
+  function isSyncWorkerUrl(url){
+    const sync = loadSyncSettings().workerUrl;
+    return !!sync && normalizeHttpUrl(sync).replace(/\/+$/, '').toLowerCase() === url.toLowerCase();
+  }
+  const SYNC_WORKER_MIXUP = 'Unter dieser Adresse läuft dein GitHub-Sync-Worker, nicht der Proxy-Worker. Der Proxy-Worker braucht einen eigenen Worker mit eigener Adresse – siehe Anleitung oben.';
+
+  // Prüft, ob unter der Adresse der Skytracker-Proxy-Worker antwortet, und erklärt sonst, was dort läuft.
+  async function diagnoseExoWorker(rawUrl){
+    const url = cleanExoWorkerUrl(rawUrl);
+    if(!url) return { ok:false, msg:'Bitte zuerst die Adresse des Workers eintragen.' };
+    let host = url;
+    try{ host = new URL(url).host; }catch(e){ return { ok:false, msg:'Das ist keine gültige Adresse.' }; }
+    if(isSyncWorkerUrl(url)) return { ok:false, msg: SYNC_WORKER_MIXUP };
+    let res;
+    try{
+      res = await Promise.race([
+        fetch(url + '/status'),
+        new Promise((_, reject)=>setTimeout(()=>reject(new Error('Zeitüberschreitung nach 15 s')), 15000))
+      ]);
+    }catch(err){
+      return { ok:false, msg:`Keine lesbare Antwort von ${host} („${err && err.message ? err.message : err}“). Mögliche Ursachen: `
+        + 'Adresse vertippt; der Worker ist nicht über workers.dev veröffentlicht (Cloudflare: Worker → Settings → Domains & Routes → workers.dev aktivieren); '
+        + 'dort läuft anderer Code ohne CORS-Freigabe (z.B. der GitHub-Sync-Worker oder eine alte Proxy-Version – dann den Code aus exoplanet-proxy-worker.js einfügen und deployen); '
+        + 'oder ein Werbeblocker blockiert workers.dev. Tipp: ' + url + '/status direkt im Browser öffnen.' };
+    }
+    let body = '';
+    try{ body = await res.text(); }catch(e){}
+    let data = null;
+    try{ data = JSON.parse(body); }catch(e){}
+    if(data && data.service === 'skytracker-exoplanet-proxy') return { ok:true, msg:`Verbindung OK – Proxy-Worker antwortet (Version ${escapeHtml(data.version || '?')}).` };
+    if(data && /Nur POST erlaubt/i.test(data.error || '')) return { ok:false, msg: SYNC_WORKER_MIXUP };
+    if(/^\s*pl_name/.test(body)) return { ok:true, msg:'Verbindung OK – älterer Proxy-Worker erkannt (liefert die Daten). Optional mit dem Code aus exoplanet-proxy-worker.js aktualisieren.' };
+    return { ok:false, msg:`Unter ${host} antwortet kein Skytracker-Proxy-Worker (HTTP ${res.status}). Bitte den kompletten Code aus exoplanet-proxy-worker.js in diesen Worker einfügen und deployen.` };
+  }
+
+  document.getElementById('exoWorkerTestBtn').addEventListener('click', async ()=>{
+    const btn = document.getElementById('exoWorkerTestBtn');
+    const out = document.getElementById('exoWorkerTestResult');
+    btn.disabled = true;
+    out.textContent = 'Teste Verbindung …';
+    try{
+      const r = await diagnoseExoWorker(document.getElementById('exoWorkerUrl').value);
+      out.innerHTML = (r.ok ? '✅ ' : '❌ ') + r.msg;
+    }finally{
+      btn.disabled = false;
+    }
+  });
+
   document.getElementById('exoWorkerSettingsSaveBtn').addEventListener('click', ()=>{
-    const workerUrl = normalizeHttpUrl(document.getElementById('exoWorkerUrl').value);
+    const workerUrl = cleanExoWorkerUrl(document.getElementById('exoWorkerUrl').value);
+    if(workerUrl && isSyncWorkerUrl(workerUrl)){
+      document.getElementById('exoWorkerTestResult').textContent = '❌ ' + SYNC_WORKER_MIXUP;
+      return;
+    }
     saveExoWorkerUrl(workerUrl);
     closeExoWorkerSettingsModal();
     updateExoWorkerHint();
