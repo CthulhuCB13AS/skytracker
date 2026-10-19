@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<!-- Skytracker_BP17 – Version V2.27 -->
+<!-- Skytracker_BP17 – Version V2.28 -->
 <html lang="de">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>Skytracker &ndash; Balkon-Sichtfenster</title>
 <style>
   :root{
@@ -16,6 +16,11 @@
     --input-border:#6b7894;
   }
   *{box-sizing:border-box;}
+  /* Seiten-Zoom am Handy sperren: nur Scrollen in beide Richtungen ist erlaubt, kein Zwei-Finger- und
+     kein Doppeltipp-Zoom. Das Polardiagramm hat einen eigenen Zwei-Finger-Zoom (per Script), der davon
+     unberührt bleibt. Ergänzt durch viewport-Meta-Tag und Gesten-Sperre im Script (für iOS Safari,
+     das user-scalable=no seit iOS 10 ignoriert). */
+  html, body{ touch-action:pan-x pan-y; }
   body{
     margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
     background:var(--bg); color:var(--text); line-height:1.5;
@@ -607,7 +612,7 @@
 <section class="docview" id="docView" aria-label="Dokumentation" style="display:none;">
   <button type="button" id="backToPlannerBtn" style="margin:20px 0 10px;">&larr; Zurück zum Planer</button>
 
-  <p class="small">Version: V2.27</p>
+  <p class="small">Version: V2.28</p>
   <h2>Überblick</h2>
   <p>
     Dieses Tool findet Himmelsobjekte, die mit einem Linsenteleskop (432&nbsp;mm Brennweite, 72&nbsp;mm
@@ -738,7 +743,8 @@
     Mit dem Mausrad über dem Diagramm lässt sich hinein-
     (hoch scrollen) bzw. herauszoomen (runter scrollen), und zwar zur jeweiligen Position des
     Mauszeigers hin (wie bei Karten üblich) statt starr zur Diagrammmitte; ein Doppelklick auf das
-    Diagramm setzt den Zoom zurück. Am Handy zoomt man mit zwei Fingern; die Knöpfe „+“, „&minus;“ und
+    Diagramm setzt den Zoom zurück. Am Handy zoomt man mit zwei Fingern (nur im Diagramm &ndash; die
+    übrige Seite lässt sich am Handy bewusst nicht vergrößern); die Knöpfe „+“, „&minus;“ und
     „Zoom zurücksetzen“ unter dem Diagramm funktionieren überall, auch per Tastatur. Die Werte eines
     Stützpunkts oder Bahnpunkts erscheinen beim Darüberfahren mit der Maus bzw. am Handy beim Antippen
     (ein Tipp in die Nähe genügt).
@@ -1205,6 +1211,21 @@
 <script>
 (function(){
   "use strict";
+
+  // ---------- Seiten-Zoom am Handy verhindern (außer im Polardiagramm) ----------
+  // iOS Safari ignoriert user-scalable=no und teils touch-action - dort verhindern erst diese Handler
+  // das Zoomen der Seite. "gesture*"-Ereignisse gibt es nur in Safari; sie betreffen ausschließlich den
+  // Seiten-Zoom und werden daher überall unterdrückt, auch über dem Diagramm: Dessen eigener Zoom läuft
+  // über die Touch-Ereignisse (siehe Pinch-Zoom beim Polardiagramm) und funktioniert weiter.
+  ['gesturestart', 'gesturechange', 'gestureend'].forEach(type=>{
+    document.addEventListener(type, (e)=>e.preventDefault(), { passive: false });
+  });
+  // Zwei-Finger-Bewegungen außerhalb des Diagramms: nicht an den Browser weiterreichen (kein Zoom).
+  document.addEventListener('touchmove', (e)=>{
+    if(e.touches.length > 1 && !(e.target instanceof Element && e.target.closest('#compassSvg'))) e.preventDefault();
+  }, { passive: false });
+  // Doppeltipp-Zoom verhindert bereits touch-action im CSS (iOS ab 13, Android) - bewusst kein eigener
+  // touchend-Handler, der würde auch schnelles Doppel-Antippen von Knöpfen (z.B. „+“) verschlucken.
 
   // ---------- Seitenumschaltung Planer / Doku ----------
   document.getElementById('showDocBtn').addEventListener('click', ()=>{
